@@ -1,0 +1,55 @@
+[Mesh]
+  type = GeneratedMesh
+  dim = 1
+  nx = 1
+  xmin = 0.0
+  xmax = 1.0
+[]
+
+[Variables]
+  [n_e]
+    type = MooseVariableFVReal
+    initial_condition = 1.0e16
+  []
+[]
+
+[FunctorMaterials]
+  [ei01_controlled_source]
+    type = ADGenericFunctorMaterial
+    prop_names = 'ei01_electron_number_source'
+    prop_values = '-1.0e16'
+  []
+[]
+
+[FVKernels]
+  [n_e_time]
+    type = FVTimeKernel
+    variable = n_e
+  []
+  [ei01_electron_source]
+    type = FVCoupledForce
+    variable = n_e
+    v = ei01_electron_number_source
+    coef = 1
+  []
+[]
+
+[Postprocessors]
+  [n_e_avg]
+    type = ElementAverageFunctorPostprocessor
+    functor = n_e
+    execute_on = 'INITIAL TIMESTEP_END'
+  []
+[]
+
+[Executioner]
+  type = Transient
+  dt = 0.1
+  end_time = 0.1
+  solve_type = NEWTON
+[]
+
+[Outputs]
+  csv = true
+  exodus = false
+[]

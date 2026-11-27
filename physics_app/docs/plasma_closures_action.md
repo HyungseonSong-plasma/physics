@@ -1,0 +1,192 @@
+> **2026-11-12 retirement notice (Issue #402):** The historical
+> `ElectronClosureMaterial`, `ElectronTransportLookupMaterial`,
+> `PhysicsThermalDiffusionMaterial` and
+> `PhysicsElectronTransportCoefficients` C++ source implementations have
+> been removed in Draft PR #523. New coefficient inputs use `DDTransportMaterial`
+> (constant or lookup) and `NVTransportMaterial` (heavy mixture/collision transport).
+> Mean energy is computed separately by `PhysicsElectronMeanEnergyMaterial`.
+> Electron-lookup and thermal-diffusion MOOSE factory aliases are removed;
+> only canonical Material types are registered. The combined
+> ElectronClosureMaterial token is retired. DDTransportMaterial reads lookup energy
+> exclusively from mean_en_solved (no coordinate/mean_energy input). The following
+> older sections describe the original archived contract, **not the current
+> executable input API**. See
+> `docs/development/2026-11-12_issue402_dd_nv_material_consolidation.md`.
+>
+# PlasmaClosures Action — archived legacy contract
+
+> **Archived / not executable on current PhysicsApp.** The `[PlasmaClosures]`
+> composition Action was retired after confirming it is not used by canonical
+> S6-417/941 D input layers. This document records historical configuration
+> and scientific provenance only. Individual underlying Material types remain
+> independently registered where they remain in use. The now-retired
+> `PhysicsElectronKineticsMaterial` and `PhysicsHeavyTransportMaterial` are
+> replaced in current input files by **existing** `RateCoeffMaterial`
+> (one per reaction) and `NVTransportMaterial` respectively.
+> Old inputs using `[PlasmaClosures]` will fail parsing until migrated. The immutable historical
+> source and archived results are not rewritten.
+
+
+`[PlasmaClosures]` is the user-facing composition layer for PhysicsApp plasma closure
+materials. The preferred API is role-based: each MultiApp creates only the closure
+owned by its local physics state.
+
+## Roles
+
+```text
+role = electron
+  -> ElectronClosureMaterial
+  -> PhysicsElectronKineticsMaterial only when reaction-table inputs are supplied
+
+role = heavy_transport
+  -> PhysicsHeavyTransportMaterial
+
+role = electrostatic_charge
+  -> PhysicsPlasmaChargeDensityMaterial
+```
+
+The old `create_electron_closure`, `create_electron_kinetics`,
+`create_heavy_transport`, and `create_charge_density` switches remain available
+under the default `role = custom` for backward compatibility. Do not combine an
+explicit non-custom role with the legacy switches.
+
+## MultiApp placement
+
+```text
+input.i
+  [PlasmaClosures]
+    [heavy]
+      role = heavy_transport
+
+fast_sub.i
+  [PlasmaClosures]
+    [electron]
+      role = electron
+
+poisson_sub.i
+  [PlasmaClosures]
+    [charge]
+      role = electrostatic_charge
+```
+
+This is not duplicate closure work. Each block belongs to a different FEProblem /
+MultiApp instance and consumes local state.
+
+For frozen-heavy Gummel coupling, keep role ownership local but add a dedicated
+orchestration level between the heavy parent and the two fast siblings:
+
+```text
+OUTER_MAIN
+  PlasmaClosures(role = heavy_transport)
+  '- GUMMEL_DRIVER
+       |- SUB_ELECTRON : PlasmaClosures(role = electron)
+       '- SUB_POISSON  : PlasmaClosures(role = electrostatic_charge)
+```
+
+`OUTER_MAIN` copies one heavy-state snapshot into the driver before the driver
+executes. The driver does not own heavy equations; it stores that snapshot in
+AuxVariables and reuses it unchanged for every electron-Poisson fixed-point
+iteration. After convergence, the driver exports the final `n_e/T_e/phi`
+state back to the heavy parent.
+
+This avoids turning the inner Gummel solve into an electron-heavy-Poisson
+three-block iteration. Material/functor outputs such as
+`electron_temperature_K` must still be sampled into an AuxVariable before
+`MultiAppCopyTransfer` can export them.
+
+## Electron example
+
+```text
+[PlasmaClosures]
+  [electron]
+    role = electron
+
+    electron_state_form = physical_eV
+    electron_number_density = electron_number_density
+    electron_energy_density = electron_energy_density
+
+    gas_pressure = p_gas
+    gas_temperature = T_g
+    electron_transport_table_file = electron_moments.txt
+
+    electron_impact_rate_table_files = 'ionization.txt attachment.txt'
+    electron_impact_target_molar_concentrations = 'c_O2 c_O2'
+    electron_impact_reaction_progress_names = 'R_ionization R_attachment'
+  []
+[]
+```
+
+If no electron-impact table parameters are supplied, `role = electron` creates only
+the electron state/transport closure.
+
+## Heavy transport example
+
+```text
+[PlasmaClosures]
+  [heavy]
+    role = heavy_transport
+
+    heavy_species_temperature = T_g
+    heavy_species_pressure = p_gas
+    electron_temperature = electron_temperature_K
+    electron_number_density = electron_density_fast
+
+    heavy_transport_data_file = transport_data.txt
+    heavy_species = 'O2 O2s O2p O Om Op Os'
+    heavy_mass_fractions = 'w_O2 w_O2s w_O2p w_O w_Om w_Op w_Os'
+  []
+[]
+```
+
+## Electrostatic charge example
+
+```text
+[PlasmaClosures]
+  [charge]
+    role = electrostatic_charge
+
+    mixture_density = rho_const
+    electron_number_density = electron_number_density
+    charged_species_ids = 'O2p Om Op'
+    charged_species_mass_fractions = 'w_O2p_frozen w_Om_frozen w_Op_frozen'
+    charged_species_molar_masses = '0.032 0.016 0.016'
+    charged_species_charge_numbers = '1 -1 1'
+  []
+[]
+```
+
+The C++ materials remain separate internally; the role API only simplifies
+user-facing composition.
+
+## Species-based DriftDiffusion Functor names
+
+For `Physics/Plasmas/Transport/DriftDiffusion/Continuity`, the
+`PlasmaClosures(role=electron)` material publishes both historical
+`electron_mobility`/`electron_diffusion` and new canonical
+`e_mobility`/`e_diffusivity` as two names for **the same AD transport
+formula and table lookup**. Continuity no longer accepts mobility or
+diffusivity input lists and derives both lower-level Functor references
+from `fem_species` automatically.
+
+The heavy-transport `D_mix_<id>` family is a mixture-averaged closure and
+is not automatically interchangeable with the archived FV ion
+`ion_diffusion` values. For an old generic ion Material that is not a
+canonical publisher, use `DDTransportMaterial (model=functor)` only
+after checking the original source units, species mapping, and ownership.
+The existing B/C S6 archived inputs and their provider names are retained.
+No FV transport kernel is auto-generated by Continuity yet.
+
+## Compatibility for shortened Material classes
+
+The preferred electron owner factory type is `ElectronClosureMaterial`.
+Older inputs specifying `PhysicsElectronClosureMaterial` remain accepted
+through a MOOSE factory alias; the composition Action creates the new type.
+That compatibility statement is historical. As of Issue #402's
+unmerged 2026-11-12 retirement, the `PlasmaChargeTransportMaterial`
+C++ implementation and `PhysicsPlasmaChargeTransportMaterial` alias
+are removed. `DDTransportMaterial` now owns ion coefficient outputs, while
+`PhysicsPlasmaChargeDensityMaterial` supplies independent charge and
+FV Poisson Functors. `PoissonEq` FEM still needs an explicit
+`MaterialPropertyName` source (no automatic Functor adapter).
+Frozen historical P3 inputs remain unchanged and require a separate
+scratch compatibility gate.
