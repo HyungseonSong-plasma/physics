@@ -2,7 +2,7 @@
 
 Physics experiments and independent MOOSE Physics application build.
 
-Initial imported snapshot: see [IMPORT_MANIFEST.json](IMPORT_MANIFEST.json). Source remains owned by the original repository until a separately approved cutover. Seven legacy reference tables are withheld pending provenance and redistribution qualification; this is not the complete original runtime dataset. Preserve the application LGPL 2.1 notices and original Apache-2.0 build recipes.
+Owner-selected source snapshot: moose-test-repo draft PR #903 at `f55bd9fe32023f21a4c2d0c571b51e9e077f5475`. see [IMPORT_MANIFEST.json](IMPORT_MANIFEST.json). Source remains owned by the original repository until a separately approved cutover. Seven legacy reference tables now located in upstream `physics_app/database/` are withheld pending provenance and redistribution qualification; this is not the complete original runtime dataset. Preserve the application LGPL 2.1 notices and original Apache-2.0 build recipes.
 
 ## Native build
 
