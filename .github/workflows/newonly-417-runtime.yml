@@ -316,46 +316,48 @@ jobs:
           timeout 180 docker run --rm --network none -v "$ev:/evidence" "$image" -i /opt/physics/ci/runtime-database-smoke.i Outputs/file_base=/evidence/runtime-db 2>&1 | tee "$ev/runtime-db.log"
           python3 runtime-image/verify-runtime.py "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db" "$ev/native-db.csv" "$ev/runtime-db.csv" | tee "$ev/runtime-verification.txt"
           echo PHYSICS_ISOLATED_RUNTIME_PASS
-      - name: Build JIT-capable diagnostic runtime using pinned build base
+      - name: Build reduced JIT runtime from verified scratch closure
         shell: bash
         run: |
           set -euo pipefail
           ev="$RUNNER_TEMP/physics-evidence"
           scratch="physics-runtime:ci-$GITHUB_SHA"
           image="physics-runtime-jit:ci-$GITHUB_SHA"
-          # Use the already verified binary/data closure and the same immutable
-          # compiler, shell and headers. Keep dependency libs from the base.
-          # This diagnostic is intentionally not the final minimal JIT closure.
+          docker image rm "$scratch"
+          docker run --rm --network none --entrypoint /bin/bash --user 0:0 \
+            -v "$PWD/physics_app:/opt/physics:ro" \
+            -v "$PWD/runtime-image/collect-jit.sh:/collect-jit.sh:ro" \
+            -v "$PWD/runtime-image/runtime-root:/runtime-root" \
+            "$BASE_IMAGE" -lc 'bash /collect-jit.sh /runtime-root'
+          sudo cp runtime-image/runtime-root/opt/physics/JIT_CLOSURE.txt "$ev/"
           docker build --network none --platform linux/amd64 \
-            --build-arg BASE_IMAGE="$BASE_IMAGE" \
-            --build-arg REPOSITORY_SHA="$GITHUB_SHA" \
-            -t "$image" -f - runtime-image <<'DOCKERFILE'
-          ARG BASE_IMAGE
-          FROM ${BASE_IMAGE}
+            --build-arg REPOSITORY_SHA="$GITHUB_SHA" -t "$image" -f - runtime-image <<'DOCKERFILE'
+          FROM scratch
           ARG REPOSITORY_SHA
           LABEL org.opencontainers.image.source="https://github.com/HyungseonSong-plasma/physics" \
                 org.opencontainers.image.revision="${REPOSITORY_SHA}" \
-                io.physics.runtime.mode="jit-diagnostic-build-base"
-          COPY runtime-root/opt/physics/ /opt/physics/
+                io.physics.runtime.mode="jit-reduced-candidate"
+          COPY runtime-root/ /
           ENV OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           WORKDIR /work
-          ENTRYPOINT ["/bin/bash","-lc","set -euo pipefail; source /environment; export LD_LIBRARY_PATH=/opt/physics/test/lib:/opt/physics/lib:${LD_LIBRARY_PATH:-}; exec /opt/physics/physics-opt \"$@\"","physics-opt"]
+          ENTRYPOINT ["/bin/bash","/opt/physics/entrypoint-jit.sh"]
           DOCKERFILE
           docker image inspect "$image" --format '{{.Id}} {{.Size}} {{.Os}}/{{.Architecture}}' | tee "$ev/jit-runtime-image.txt"
-          docker run --rm --network none --entrypoint /bin/bash "$image" -lc '
-            set -euo pipefail
-            source /environment
-            command -v c++
-            c++ --version | head -1
-            test -r /opt/physics_vendor/moose/framework/include/utils/ADReal.h
-            find /opt/physics_vendor/moose/framework -name MooseConfig.h -print -quit
-            sha256sum /opt/physics/physics-opt
-          ' | tee "$ev/jit-runtime-toolchain.txt"
-          test "$(tail -1 "$ev/jit-runtime-toolchain.txt" | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
+          size="$(docker image inspect "$image" --format '{{.Size}}')"
+          test "$size" -lt 10096272614
+          cid="$(docker create "$image")"
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          mkdir "$RUNNER_TEMP/jit-db" "$RUNNER_TEMP/jit-installed-db"
+          docker cp "$cid:/opt/physics/database/." "$RUNNER_TEMP/jit-db"
+          docker cp "$cid:/opt/share/physics/database/." "$RUNNER_TEMP/jit-installed-db"
+          docker cp "$cid:/opt/physics/physics-opt" "$RUNNER_TEMP/jit-physics-opt"
+          test "$(sha256sum "$RUNNER_TEMP/jit-physics-opt" | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
+          docker rm "$cid"
+          trap - EXIT
           timeout 180 docker run --rm --network none "$image" -i /opt/physics/ci/smoke.i 2>&1 | tee "$ev/jit-runtime-steady.log"
           timeout 180 docker run --rm --network none -v "$ev:/evidence" "$image" -i /opt/physics/ci/runtime-database-smoke.i Outputs/file_base=/evidence/jit-db 2>&1 | tee "$ev/jit-runtime-db.log"
-          python3 runtime-image/verify-runtime.py "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db" "$ev/native-db.csv" "$ev/jit-db.csv" | tee "$ev/jit-runtime-verification.txt"
-          docker image rm "$scratch" || true
+          python3 runtime-image/verify-runtime.py "$RUNNER_TEMP/jit-db" "$RUNNER_TEMP/jit-installed-db" "$ev/native-db.csv" "$ev/jit-db.csv" | tee "$ev/jit-runtime-verification.txt"
+          echo PHYSICS_REDUCED_JIT_SMOKE_PASS
       - name: Stage exact public EI candidate and run S6-417 in JIT-capable runtime
         shell: bash
         run: |
@@ -387,14 +389,21 @@ jobs:
             --env OXYGEN_RESEARCH_400=1 --env OXYGEN_RESEARCH_FULL24=0
             --env OXYGEN_RESEARCH_EI2738_FORMULA=0 --env OXYGEN_RESEARCH_QUICK_5MIN=0
             --mount "type=bind,src=$stage,dst=/case"
+            --mount "type=bind,src=$ev,dst=/evidence"
             "$image")
           timeout 480 "${cmd[@]}" --check-input -i "${layers[@]}" 2>&1 | tee "$ev/newonly-check-input.log"
           grep -q 'Syntax OK' "$ev/newonly-check-input.log"
           echo NEWONLY_417_RUNTIME_CHECK_INPUT_PASS
-          timeout 1800 "${cmd[@]}" -i "${layers[@]}" Executioner/num_steps=1 2>&1 | tee "$ev/newonly-one-step.log"
-          grep -E 'Time Step 1|Time Step[[:space:]]+1' "$ev/newonly-one-step.log"
-          grep -i 'Solve Converged' "$ev/newonly-one-step.log"
-          echo NEWONLY_417_RUNTIME_ONE_STEP_EXECUTED
+          mkdir "$ev/fields"
+          timeout 1800 "${cmd[@]}" -i "${layers[@]}" Executioner/num_steps=1 \
+            Outputs/file_base=/evidence/fields/parent Outputs/exodus=true Outputs/csv=true \
+            Outputs/interval=1 'Outputs/execute_on=INITIAL TIMESTEP_END' Outputs/checkpoint=false \
+            2>&1 | tee "$ev/newonly-one-step.log"
+          docker run --rm --network none --entrypoint /bin/bash --user 0:0 \
+            -v "$ev:/evidence" -v "$stage:/case:ro" \
+            -v "$PWD/runtime-image/verify-newonly-output.py:/verify-newonly-output.py:ro" \
+            "$BASE_IMAGE" -lc 'source /environment; python3 /verify-newonly-output.py /evidence 1e-9 /case'
+          echo NEWONLY_417_PARENT_FIELD_OUTPUT_PASS
       - name: Upload build evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
