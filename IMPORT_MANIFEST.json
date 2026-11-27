@@ -549,11 +549,6 @@
       "blob": "ecd19ae4c67b46e20694dd95acdd2362f241b4fc"
     },
     {
-      "path": "physics_app/examples/qualified_plasma_closures/README.md",
-      "mode": "100644",
-      "blob": "1c523cafe7ad2a27eb0cef27c6c07299cb70fdb7"
-    },
-    {
       "path": "physics_app/include/auxkernels/LowerDSurfaceCurrentProbeAux.h",
       "mode": "100644",
       "blob": "e6cad620e182ad2eff31a275da03997828b3443a"
@@ -1170,7 +1165,16 @@
       "path": "physics_app/database/o_ionization.txt",
       "mode": "100644",
       "blob": "43d73a4f8a70ea1fb262383e71164d8f18844ae8"
+    },
+    {
+      "path": "physics_app/examples/qualified_plasma_closures/README.md",
+      "mode": "100644",
+      "blob": "1c523cafe7ad2a27eb0cef27c6c07299cb70fdb7"
     }
   ],
-  "exclusion_reason": "Owner explicitly excludes seven legacy reference rate tables from the migration scope. No coefficient substitution. Legacy tests depending on excluded tables remain outside acceptance."
+  "exclusion_reason": "Owner explicitly excludes seven legacy reference rate tables from the migration scope. No coefficient substitution. Legacy tests depending on excluded tables remain outside acceptance. Owner additionally removed historical examples/qualified_plasma_closures/README.md; no current executable example exists.",
+  "exclusion_notes": {
+    "legacy_lookup_count": 7,
+    "historical_example_count": 1
+  }
 }
