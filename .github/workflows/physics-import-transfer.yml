@@ -1,0 +1,118 @@
+name: Physics source snapshot transfer (one-time)
+on:
+  push:
+    branches: [test/physics-import-transfer]
+    paths: ['.github/workflows/physics-import-transfer.yml']
+permissions: {}
+jobs:
+  transfer:
+    if: ${{ github.repository_id == '1474679185' && github.actor_id == '189476866' && github.run_attempt == '1' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact target base
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 0369cb5877e12fd9092c678a72660a4c5932b827
+          path: target
+          persist-credentials: false
+      - name: Checkout exact public source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: HyungseonSong-plasma/moose-test-repo
+          ref: 19cb056d48d82c856ccf703ddd69860bc0789ac8
+          path: source
+          persist-credentials: false
+      - name: Audit and stage exact allowed source subset
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "19cb056d48d82c856ccf703ddd69860bc0789ac8"
+          test "$(git -C source rev-parse HEAD:physics_app)" = "1b02076f1d8bfaf8c7b3c1c2f3a38ed69ec584f3"
+          test "$(git -C target rev-parse HEAD)" = "0369cb5877e12fd9092c678a72660a4c5932b827"
+          python3 - <<'PY'
+          import hashlib, json, pathlib, re, shutil, subprocess
+          source, target = pathlib.Path("source"), pathlib.Path("target")
+          def git(root, *args):
+              return subprocess.check_output(["git", "-C", str(root), *args])
+          entries = []
+          for record in git(source, "ls-tree", "-rz", "HEAD", "physics_app").split(b"\0"):
+              if not record:
+                  continue
+              meta, raw = record.split(b"\t", 1)
+              mode, typ, sha = meta.decode().split()
+              path = raw.decode()
+              assert typ == "blob" and mode in ("100644", "100755"), path
+              assert path.startswith("physics_app/") and not any(x in path.split("/") for x in (".", "..", "private_rates", ".git")), path
+              entries.append(dict(path=path, mode=mode, blob=sha))
+          assert len(entries) == 226
+          excluded = [e for e in entries if re.fullmatch(r"physics_app/data/electron_impact/[^/]+\.txt", e["path"])]
+          assert len(excluded) == 7
+          include = [e for e in entries if e not in excluded]
+          assert len(include) == 219
+          signals = re.compile(r"(?i)copyright|SPDX-License-Identifier|all rights reserved|redistribution|private_rates|PROTECTED_ARCHIVE|MCS\.OUT|(?:\.\./){2,}|/home/|/scratch/")
+          for e in include:
+              p = e["path"]
+              data = git(source, "show", "HEAD:" + p)
+              assert hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() == e["blob"], p
+              assert not data.startswith(b"version https://git-lfs.github.com/spec/v1"), p
+              assert not re.search(rb"-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{50,}", data), p
+              hits = sorted({m.group(0).lower() for m in signals.finditer(data.decode("utf-8"))})
+              if hits:
+                  print("Audit signal:", p, ", ".join(hits))
+              dest = target / p
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              assert not dest.exists(), p
+              dest.write_bytes(data)
+              dest.chmod(int(e["mode"][-3:], 8))
+          # The old build recipes are repository-authored Apache-2.0 files.
+          recipes = []
+          for old,new in (("ci/physics-build-base/Dockerfile","build-base/Dockerfile"),("ci/physics-build-base/Makefile","build-base/Makefile"),("LICENSE","build-base/LICENSE")):
+              data = git(source, "show", "HEAD:" + old)
+              dest = target / new
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              dest.write_bytes(data)
+              recipes.append(dict(original=old, path=new, blob=git(source,"rev-parse","HEAD:"+old).decode().strip()))
+          manifest = dict(source_repository="HyungseonSong-plasma/moose-test-repo",source_commit="19cb056d48d82c856ccf703ddd69860bc0789ac8",source_tree="1b02076f1d8bfaf8c7b3c1c2f3a38ed69ec584f3",included=include,held=excluded,held_reason="Legacy electron-impact reference table origin and redistribution qualification pending; not identified as protected archive data.",recipes=recipes,ownership="snapshot; original canonical owner unchanged")
+          (target / "IMPORT_MANIFEST.json").write_text(json.dumps(manifest,indent=2)+"\n")
+          print("Import manifest:", len(include), "included;", len(excluded), "held;", len(recipes), "build-base files")
+          PY
+          git -C target add -- physics_app build-base IMPORT_MANIFEST.json
+          python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          root = Path("target")
+          m = json.loads((root/"IMPORT_MANIFEST.json").read_text())
+          def git(*a): return subprocess.check_output(["git","-C",str(root),*a])
+          staged = {}
+          for line in git("ls-files","-sz").split(b"\0"):
+              if not line: continue
+              meta,p = line.split(b"\t",1)
+              mode,sha,stage = meta.decode().split()
+              if p.startswith(b"physics_app/"): staged[p.decode()] = (mode,sha)
+          expected = {e["path"]:(e["mode"],e["blob"]) for e in m["included"]}
+          assert staged == expected
+          for e in m["recipes"]:
+              assert git("rev-parse",":"+e["path"]).decode().strip() == e["blob"], e["path"]
+          print("Exact staged path, mode and blob match: 219/219; recipes: 3/3")
+          PY
+      - name: Publish only leased migration branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd target
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Import reviewed Physics source subset and build-base recipes" -m "Refs #3"
+          test "$(git rev-parse HEAD^)" = "0369cb5877e12fd9092c678a72660a4c5932b827"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "0369cb5877e12fd9092c678a72660a4c5932b827"
+          test "$(git ls-remote origin refs/heads/migration/physics-app | cut -f1)" = "0369cb5877e12fd9092c678a72660a4c5932b827"
+          git push origin HEAD:refs/heads/migration/physics-app
+          echo "Transferred candidate SHA: $(git rev-parse HEAD)"
