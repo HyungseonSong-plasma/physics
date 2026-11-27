@@ -1,0 +1,13 @@
+# FileRank: C
+name: Work framework contract
+on:
+  workflow_dispatch:
+  push:
+    branches: [test/work-framework-pilot]
+    paths: ['.github/workflows/work-contract.yml', 'tests/work_contract.py']
+permissions: {}
+jobs:
+  contract:
+    permissions:
+      contents: read
+    uses: HyungseonSong-plasma/work/.github/workflows/reusable_test.yml@1f12e2621fa1c2b55c00ba8e5a8e5975d9f08b9f
