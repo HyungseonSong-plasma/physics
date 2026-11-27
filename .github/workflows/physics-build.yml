@@ -1,0 +1,179 @@
+name: Physics native build and runtime
+on:
+  push:
+    branches: [migration/physics-app, main]
+    paths: ['physics_app/**', 'build-base/**', 'runtime-image/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  framework-contract:
+    permissions:
+      contents: read
+    uses: HyungseonSong-plasma/work/.github/workflows/reusable_test.yml@1f12e2621fa1c2b55c00ba8e5a8e5975d9f08b9f
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      BASE_IMAGE: ghcr.io/hyungseonsong-plasma/physics-build-base@sha256:2c3352da4f5c1b2ae98475fc01463ad0cdbc6ce7d221ce55055ddea152182008
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate initial import and dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+          mkdir -p "$RUNNER_TEMP/physics-evidence"
+          python3 - <<'PY'
+          import json, pathlib, subprocess, os
+          m = json.loads(pathlib.Path("IMPORT_MANIFEST.json").read_text())
+          expected = {e["path"]:(e["mode"],e["blob"]) for e in m["included"]}
+          current = {}
+          for line in subprocess.check_output(["git","ls-tree","-rz","HEAD","physics_app"]).split(b"\0"):
+              if not line: continue
+              meta,p = line.split(b"\t",1)
+              mode,typ,sha = meta.decode().split()
+              assert typ == "blob"
+              current[p.decode()] = (mode,sha)
+          # Initial snapshot integrity is evidence, not a permanent source freeze:
+          # later reviewed source changes require explicit manifest update.
+          assert current == expected, "Source differs from reviewed import manifest"
+          expected_lock = dict(MOOSE="9f388366ccf38b9c34542ec5561198249fde0ac9",
+              CRANE="ba26970cf419dcac563a20ed7079d445bc6341c3",
+              SQUIRREL="16a26d504f3ee11161a86d4e3ebf3c0e5f2afbb1",
+              ZAPDOS="9eceffbc46048c3760bbfa9a7f1ca681ae35af1d",
+              PHYSICS_BUILD_BASE_IMAGE="ghcr.io/hyungseonsong-plasma/physics-build-base",
+              PHYSICS_BUILD_BASE=os.environ["BASE_IMAGE"])
+          records = [line.split("=",1) for line in pathlib.Path("physics_app/dependencies.lock").read_text().splitlines() if line and not line.startswith("#")]
+          assert len(records) == len(expected_lock) and dict(records) == expected_lock
+          print("IMPORT_PATH_MODE_BLOB_PASS",len(current))
+          print("DEPENDENCY_LOCK_PASS")
+          PY
+          { git rev-parse HEAD; git rev-parse HEAD:physics_app; sha256sum IMPORT_MANIFEST.json physics_app/dependencies.lock; df -h /; } | tee "$RUNNER_TEMP/physics-evidence/provenance.txt"
+      - name: Pull and verify immutable dependency base
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$BASE_IMAGE"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{.Os}}/{{.Architecture}}')" = "linux/amd64"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.moose.sha" }}')" = "9f388366ccf38b9c34542ec5561198249fde0ac9"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.crane.sha" }}')" = "ba26970cf419dcac563a20ed7079d445bc6341c3"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.squirrel.sha" }}')" = "16a26d504f3ee11161a86d4e3ebf3c0e5f2afbb1"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.zapdos.sha" }}')" = "9eceffbc46048c3760bbfa9a7f1ca681ae35af1d"
+          { echo "$BASE_IMAGE"; docker image inspect "$BASE_IMAGE" --format '{{.Id}} {{.Size}}'; df -h /; } | tee -a "$RUNNER_TEMP/physics-evidence/provenance.txt"
+      - name: Compile Physics and verify native smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --entrypoint /bin/bash --user 0:0 --workdir /workspace/physics_app \
+            -e GITHUB_SHA="$GITHUB_SHA" -v "$PWD:/workspace" -v "$RUNNER_TEMP/physics-evidence:/evidence" \
+            "$BASE_IMAGE" -lc '
+              set -euo pipefail
+              source /environment
+              for p in /workspace /opt/physics_vendor/{moose,crane,squirrel,zapdos}; do git config --global --add safe.directory "$p"; done
+              test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+              export MOOSE_DIR=/opt/physics_vendor/moose CRANE_DIR=/opt/physics_vendor/crane SQUIRREL_DIR=/opt/physics_vendor/squirrel ZAPDOS_DIR=/opt/physics_vendor/zapdos METHOD=opt
+              for pair in "moose:9f388366ccf38b9c34542ec5561198249fde0ac9" "crane:ba26970cf419dcac563a20ed7079d445bc6341c3" "squirrel:16a26d504f3ee11161a86d4e3ebf3c0e5f2afbb1" "zapdos:9eceffbc46048c3760bbfa9a7f1ca681ae35af1d"; do
+                test "$(git -C "/opt/physics_vendor/${pair%%:*}" rev-parse HEAD)" = "${pair#*:}"
+              done
+              for lib in crane squirrel zapdos; do test -e "/opt/physics_vendor/$lib/lib/lib$lib-opt.la"; done
+              cat /opt/physics-build-base/BUILD_BASE_PROVENANCE.txt
+              test ! -e physics-opt
+              c++ --version | head -1
+              date -u
+              make -j2 app_non_unity_dirs="%/utils" 2>&1 | tee /evidence/build.log
+              test -x physics-opt
+              sha256sum physics-opt | tee /evidence/executable.sha256
+              export LD_LIBRARY_PATH="$PWD/test/lib:$PWD/lib:${LD_LIBRARY_PATH:-}"
+              ldd ./physics-opt | tee /evidence/ldd.txt
+              if grep -q "not found" /evidence/ldd.txt; then exit 1; fi
+              timeout 180 ./physics-opt --check-input -i ci/smoke.i 2>&1 | tee /evidence/check-input.log
+              timeout 180 ./physics-opt -i ci/smoke.i 2>&1 | tee /evidence/steady.log
+              timeout 180 ./physics-opt --check-input -i ci/species_wall_functor_naming_smoke.i 2>&1 | tee /evidence/app-construction.log
+              sed "s/type = Diffusion/type = InvalidPhysicsPilotObject/" ci/smoke.i >/tmp/physics-invalid.i
+              set +e
+              timeout 180 ./physics-opt --check-input -i /tmp/physics-invalid.i >/evidence/negative.log 2>&1
+              rc=$?
+              set -e
+              test "$rc" -ne 0 && test "$rc" -ne 124
+              grep -q InvalidPhysicsPilotObject /evidence/negative.log
+              echo PHYSICS_NATIVE_BUILD_AND_SMOKE_PASS
+              date -u
+            '
+      - name: Collect runtime closure and native database baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir runtime-image/runtime-root
+          ev="$RUNNER_TEMP/physics-evidence"
+          docker run --rm --network none --entrypoint /bin/bash --user 0:0 \
+            -v "$PWD/physics_app:/opt/physics:ro" \
+            -v "$PWD/runtime-image/collect-runtime.sh:/usr/local/bin/collect-runtime:ro" \
+            -v "$PWD/runtime-image/database-smoke.i:/database-smoke.i:ro" \
+            -v "$PWD/runtime-image/runtime-root:/runtime-root" \
+            -v "$ev:/evidence" "$BASE_IMAGE" -lc '
+              set -euo pipefail
+              source /environment
+              export LD_LIBRARY_PATH="/opt/physics/test/lib:/opt/physics/lib:${LD_LIBRARY_PATH:-}"
+              timeout 180 /opt/physics/physics-opt -i /database-smoke.i Outputs/file_base=/evidence/native-db 2>&1 | tee /evidence/native-db.log
+              bash /usr/local/bin/collect-runtime /runtime-root
+            '
+          sudo cp runtime-image/database-smoke.i runtime-image/runtime-root/opt/physics/ci/runtime-database-smoke.i
+          sudo cp UPSTREAM_NOTICES.md runtime-image/runtime-root/opt/physics/UPSTREAM_NOTICES.md
+          sudo cp IMPORT_MANIFEST.json runtime-image/runtime-root/opt/physics/IMPORT_MANIFEST.json
+          sudo cp runtime-image/runtime-root/opt/physics/RUNTIME_CLOSURE.txt "$ev/"
+          {
+            echo "PHYSICS_REPOSITORY=$GITHUB_REPOSITORY"
+            echo "PHYSICS_REVISION=$GITHUB_SHA"
+            echo "UPSTREAM_PR903=f55bd9fe32023f21a4c2d0c571b51e9e077f5475"
+            echo "BUILD_BASE=$BASE_IMAGE"
+            echo "SOURCE_MANIFEST_SHA256=$(sha256sum IMPORT_MANIFEST.json | cut -d' ' -f1)"
+            cat "$ev/executable.sha256"
+          } | sudo tee runtime-image/runtime-root/opt/physics/RUNTIME_PROVENANCE.txt | tee "$ev/RUNTIME_PROVENANCE.txt"
+          test -s "$ev/native-db.csv"
+          df -h /
+          docker image rm "$BASE_IMAGE" || true
+      - name: Build local scratch runtime and verify isolated execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          ev="$RUNNER_TEMP/physics-evidence"
+          image="physics-runtime:ci-$GITHUB_SHA"
+          manifest="$(sha256sum IMPORT_MANIFEST.json | cut -d' ' -f1)"
+          docker build --network none --platform linux/amd64 \
+            --build-arg BUILD_BASE_REF="$BASE_IMAGE" \
+            --build-arg REPOSITORY_SHA="$GITHUB_SHA" \
+            --build-arg PHYSICS_SOURCE_MANIFEST_SHA256="$manifest" \
+            -t "$image" runtime-image
+          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$GITHUB_SHA"
+          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "io.physics.source.manifest-sha256" }}')" = "$manifest"
+          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "io.physics.source.owner" }}')" = "physics/physics_app"
+          docker image inspect "$image" --format '{{.Id}} {{.Size}} {{.Os}}/{{.Architecture}}' | tee "$ev/runtime-image.txt"
+          cid="$(docker create "$image")"
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          mkdir "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db"
+          docker cp "$cid:/opt/physics/database/." "$RUNNER_TEMP/runtime-db"
+          docker cp "$cid:/opt/share/physics/database/." "$RUNNER_TEMP/installed-db"
+          docker cp "$cid:/opt/physics/physics-opt" "$RUNNER_TEMP/runtime-physics-opt"
+          test "$(sha256sum "$RUNNER_TEMP/runtime-physics-opt" | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
+          docker rm "$cid"
+          trap - EXIT
+          timeout 180 docker run --rm --network none "$image" --check-input -i /opt/physics/ci/smoke.i 2>&1 | tee "$ev/runtime-check-input.log"
+          timeout 180 docker run --rm --network none "$image" -i /opt/physics/ci/smoke.i 2>&1 | tee "$ev/runtime-steady.log"
+          timeout 180 docker run --rm --network none "$image" --check-input -i /opt/physics/ci/species_wall_functor_naming_smoke.i 2>&1 | tee "$ev/runtime-app-construction.log"
+          timeout 180 docker run --rm --network none -v "$ev:/evidence" "$image" -i /opt/physics/ci/runtime-database-smoke.i Outputs/file_base=/evidence/runtime-db 2>&1 | tee "$ev/runtime-db.log"
+          python3 runtime-image/verify-runtime.py "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db" "$ev/native-db.csv" "$ev/runtime-db.csv" | tee "$ev/runtime-verification.txt"
+          echo PHYSICS_ISOLATED_RUNTIME_PASS
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: physics-build-evidence
+          path: ${{ runner.temp }}/physics-evidence/
+          if-no-files-found: warn
+          retention-days: 30
