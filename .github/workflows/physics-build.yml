@@ -1,0 +1,111 @@
+name: Physics native build
+on:
+  push:
+    branches: [migration/physics-app, main]
+    paths: ['physics_app/**', 'build-base/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      BASE_IMAGE: ghcr.io/hyungseonsong-plasma/physics-build-base@sha256:2c3352da4f5c1b2ae98475fc01463ad0cdbc6ce7d221ce55055ddea152182008
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate initial import and dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+          mkdir -p "$RUNNER_TEMP/physics-evidence"
+          python3 - <<'PY'
+          import json, pathlib, subprocess, os
+          m = json.loads(pathlib.Path("IMPORT_MANIFEST.json").read_text())
+          expected = {e["path"]:(e["mode"],e["blob"]) for e in m["included"]}
+          current = {}
+          for line in subprocess.check_output(["git","ls-tree","-rz","HEAD","physics_app"]).split(b"\0"):
+              if not line: continue
+              meta,p = line.split(b"\t",1)
+              mode,typ,sha = meta.decode().split()
+              assert typ == "blob"
+              current[p.decode()] = (mode,sha)
+          # Initial snapshot integrity is evidence, not a permanent source freeze:
+          # later reviewed source changes require explicit manifest update.
+          assert current == expected, "Source differs from reviewed import manifest"
+          expected_lock = dict(MOOSE="9f388366ccf38b9c34542ec5561198249fde0ac9",
+              CRANE="ba26970cf419dcac563a20ed7079d445bc6341c3",
+              SQUIRREL="16a26d504f3ee11161a86d4e3ebf3c0e5f2afbb1",
+              ZAPDOS="9eceffbc46048c3760bbfa9a7f1ca681ae35af1d",
+              PHYSICS_BUILD_BASE_IMAGE="ghcr.io/hyungseonsong-plasma/physics-build-base",
+              PHYSICS_BUILD_BASE=os.environ["BASE_IMAGE"])
+          records = [line.split("=",1) for line in pathlib.Path("physics_app/dependencies.lock").read_text().splitlines() if line and not line.startswith("#")]
+          assert len(records) == len(expected_lock) and dict(records) == expected_lock
+          print("IMPORT_PATH_MODE_BLOB_PASS",len(current))
+          print("DEPENDENCY_LOCK_PASS")
+          PY
+          { git rev-parse HEAD; git rev-parse HEAD:physics_app; sha256sum IMPORT_MANIFEST.json physics_app/dependencies.lock; df -h /; } | tee "$RUNNER_TEMP/physics-evidence/provenance.txt"
+      - name: Pull and verify immutable dependency base
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$BASE_IMAGE"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{.Os}}/{{.Architecture}}')" = "linux/amd64"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.moose.sha" }}')" = "9f388366ccf38b9c34542ec5561198249fde0ac9"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.crane.sha" }}')" = "ba26970cf419dcac563a20ed7079d445bc6341c3"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.squirrel.sha" }}')" = "16a26d504f3ee11161a86d4e3ebf3c0e5f2afbb1"
+          test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.zapdos.sha" }}')" = "9eceffbc46048c3760bbfa9a7f1ca681ae35af1d"
+          { echo "$BASE_IMAGE"; docker image inspect "$BASE_IMAGE" --format '{{.Id}} {{.Size}}'; df -h /; } | tee -a "$RUNNER_TEMP/physics-evidence/provenance.txt"
+      - name: Compile Physics and verify native smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --entrypoint /bin/bash --user 0:0 --workdir /workspace/physics_app \
+            -e GITHUB_SHA="$GITHUB_SHA" -v "$PWD:/workspace" -v "$RUNNER_TEMP/physics-evidence:/evidence" \
+            "$BASE_IMAGE" -lc '
+              set -euo pipefail
+              source /environment
+              for p in /workspace /opt/physics_vendor/{moose,crane,squirrel,zapdos}; do git config --global --add safe.directory "$p"; done
+              test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+              export MOOSE_DIR=/opt/physics_vendor/moose CRANE_DIR=/opt/physics_vendor/crane SQUIRREL_DIR=/opt/physics_vendor/squirrel ZAPDOS_DIR=/opt/physics_vendor/zapdos METHOD=opt
+              for pair in "moose:9f388366ccf38b9c34542ec5561198249fde0ac9" "crane:ba26970cf419dcac563a20ed7079d445bc6341c3" "squirrel:16a26d504f3ee11161a86d4e3ebf3c0e5f2afbb1" "zapdos:9eceffbc46048c3760bbfa9a7f1ca681ae35af1d"; do
+                test "$(git -C "/opt/physics_vendor/${pair%%:*}" rev-parse HEAD)" = "${pair#*:}"
+              done
+              for lib in crane squirrel zapdos; do test -e "/opt/physics_vendor/$lib/lib/lib$lib-opt.la"; done
+              cat /opt/physics-build-base/BUILD_BASE_PROVENANCE.txt
+              test ! -e physics-opt
+              c++ --version | head -1
+              date -u
+              make -j2 2>&1 | tee /evidence/build.log
+              test -x physics-opt
+              sha256sum physics-opt | tee /evidence/executable.sha256
+              export LD_LIBRARY_PATH="$PWD/test/lib:$PWD/lib:${LD_LIBRARY_PATH:-}"
+              ldd ./physics-opt | tee /evidence/ldd.txt
+              if grep -q "not found" /evidence/ldd.txt; then exit 1; fi
+              timeout 180 ./physics-opt --check-input -i ci/smoke.i 2>&1 | tee /evidence/check-input.log
+              timeout 180 ./physics-opt -i ci/smoke.i 2>&1 | tee /evidence/steady.log
+              timeout 180 ./physics-opt --check-input -i ci/species_wall_functor_naming_smoke.i 2>&1 | tee /evidence/app-construction.log
+              sed "s/type = Diffusion/type = InvalidPhysicsPilotObject/" ci/smoke.i >/tmp/physics-invalid.i
+              set +e
+              timeout 180 ./physics-opt --check-input -i /tmp/physics-invalid.i >/evidence/negative.log 2>&1
+              rc=$?
+              set -e
+              test "$rc" -ne 0 && test "$rc" -ne 124
+              grep -q InvalidPhysicsPilotObject /evidence/negative.log
+              echo PHYSICS_NATIVE_BUILD_AND_SMOKE_PASS
+              date -u
+            '
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: physics-build-evidence
+          path: ${{ runner.temp }}/physics-evidence/
+          if-no-files-found: warn
+          retention-days: 30
