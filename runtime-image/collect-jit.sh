@@ -25,7 +25,11 @@ copy_headers() {
 # Keep distro userspace as an initial coarse dependency boundary, then refine
 # with compiler traces after the actual S6 case passes. No package installation.
 copy_tree /usr
-copy_tree /opt/rh/gcc-toolset-13
+# The toolset is a chroot-shaped tree. Only its installed compiler userspace
+# is needed; root/root is a private home, not a JIT dependency or image input.
+copy_tree /opt/rh/gcc-toolset-13/root/usr
+test -x "$dest$compiler"
+test ! -e "$dest/opt/rh/gcc-toolset-13/root/root"
 for p in /lib /lib64; do
   if test -d "$p"; then copy_tree "$p"; fi
 done

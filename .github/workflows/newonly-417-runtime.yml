@@ -328,8 +328,14 @@ jobs:
             -v "$PWD/physics_app:/opt/physics:ro" \
             -v "$PWD/runtime-image/collect-jit.sh:/collect-jit.sh:ro" \
             -v "$PWD/runtime-image/runtime-root:/runtime-root" \
-            "$BASE_IMAGE" -lc 'bash /collect-jit.sh /runtime-root'
+            "$BASE_IMAGE" -lc 'bash /collect-jit.sh /runtime-root' 2>&1 | tee "$ev/jit-collect.log"
           sudo cp runtime-image/runtime-root/opt/physics/JIT_CLOSURE.txt "$ev/"
+          # Detect unreadable sender paths before Docker context transfer; never
+          # loosen permissions or copy private homes to make the build succeed.
+          root=runtime-image/runtime-root
+          test ! -e "$root/opt/rh/gcc-toolset-13/root/root"
+          find "$root" \( -type d ! -executable -o -type f ! -readable \) -print > "$ev/jit-context-unreadable.txt"
+          test ! -s "$ev/jit-context-unreadable.txt"
           docker build --network none --platform linux/amd64 \
             --build-arg REPOSITORY_SHA="$GITHUB_SHA" -t "$image" -f - runtime-image <<'DOCKERFILE'
           FROM scratch
