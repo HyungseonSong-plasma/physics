@@ -1,8 +1,8 @@
-name: Physics native build
+name: Physics native build and runtime
 on:
   push:
     branches: [migration/physics-app, main]
-    paths: ['physics_app/**', 'build-base/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
+    paths: ['physics_app/**', 'build-base/**', 'runtime-image/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -105,6 +105,70 @@ jobs:
               echo PHYSICS_NATIVE_BUILD_AND_SMOKE_PASS
               date -u
             '
+      - name: Collect runtime closure and native database baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir runtime-image/runtime-root
+          ev="$RUNNER_TEMP/physics-evidence"
+          docker run --rm --network none --entrypoint /bin/bash --user 0:0 \
+            -v "$PWD/physics_app:/opt/physics:ro" \
+            -v "$PWD/runtime-image/collect-runtime.sh:/usr/local/bin/collect-runtime:ro" \
+            -v "$PWD/runtime-image/database-smoke.i:/database-smoke.i:ro" \
+            -v "$PWD/runtime-image/runtime-root:/runtime-root" \
+            -v "$ev:/evidence" "$BASE_IMAGE" -lc '
+              set -euo pipefail
+              source /environment
+              export LD_LIBRARY_PATH="/opt/physics/test/lib:/opt/physics/lib:${LD_LIBRARY_PATH:-}"
+              timeout 180 /opt/physics/physics-opt -i /database-smoke.i Outputs/file_base=/evidence/native-db 2>&1 | tee /evidence/native-db.log
+              bash /usr/local/bin/collect-runtime /runtime-root
+            '
+          sudo cp runtime-image/database-smoke.i runtime-image/runtime-root/opt/physics/ci/runtime-database-smoke.i
+          sudo cp UPSTREAM_NOTICES.md runtime-image/runtime-root/opt/physics/UPSTREAM_NOTICES.md
+          sudo cp IMPORT_MANIFEST.json runtime-image/runtime-root/opt/physics/IMPORT_MANIFEST.json
+          sudo cp runtime-image/runtime-root/opt/physics/RUNTIME_CLOSURE.txt "$ev/"
+          {
+            echo "PHYSICS_REPOSITORY=$GITHUB_REPOSITORY"
+            echo "PHYSICS_REVISION=$GITHUB_SHA"
+            echo "UPSTREAM_PR903=f55bd9fe32023f21a4c2d0c571b51e9e077f5475"
+            echo "BUILD_BASE=$BASE_IMAGE"
+            echo "SOURCE_MANIFEST_SHA256=$(sha256sum IMPORT_MANIFEST.json | cut -d' ' -f1)"
+            cat "$ev/executable.sha256"
+          } | sudo tee runtime-image/runtime-root/opt/physics/RUNTIME_PROVENANCE.txt | tee "$ev/RUNTIME_PROVENANCE.txt"
+          test -s "$ev/native-db.csv"
+          df -h /
+          docker image rm "$BASE_IMAGE" || true
+      - name: Build local scratch runtime and verify isolated execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          ev="$RUNNER_TEMP/physics-evidence"
+          image="physics-runtime:ci-$GITHUB_SHA"
+          manifest="$(sha256sum IMPORT_MANIFEST.json | cut -d' ' -f1)"
+          docker build --network none --platform linux/amd64 \
+            --build-arg BUILD_BASE_REF="$BASE_IMAGE" \
+            --build-arg REPOSITORY_SHA="$GITHUB_SHA" \
+            --build-arg PHYSICS_SOURCE_MANIFEST_SHA256="$manifest" \
+            -t "$image" runtime-image
+          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$GITHUB_SHA"
+          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "io.physics.source.manifest-sha256" }}')" = "$manifest"
+          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "io.physics.source.owner" }}')" = "physics/physics_app"
+          docker image inspect "$image" --format '{{.Id}} {{.Size}} {{.Os}}/{{.Architecture}}' | tee "$ev/runtime-image.txt"
+          cid="$(docker create "$image")"
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          mkdir "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db"
+          docker cp "$cid:/opt/physics/database/." "$RUNNER_TEMP/runtime-db"
+          docker cp "$cid:/opt/share/physics/database/." "$RUNNER_TEMP/installed-db"
+          docker cp "$cid:/opt/physics/physics-opt" "$RUNNER_TEMP/runtime-physics-opt"
+          test "$(sha256sum "$RUNNER_TEMP/runtime-physics-opt" | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
+          docker rm "$cid"
+          trap - EXIT
+          timeout 180 docker run --rm --network none "$image" --check-input -i /opt/physics/ci/smoke.i 2>&1 | tee "$ev/runtime-check-input.log"
+          timeout 180 docker run --rm --network none "$image" -i /opt/physics/ci/smoke.i 2>&1 | tee "$ev/runtime-steady.log"
+          timeout 180 docker run --rm --network none "$image" --check-input -i /opt/physics/ci/species_wall_functor_naming_smoke.i 2>&1 | tee "$ev/runtime-app-construction.log"
+          timeout 180 docker run --rm --network none -v "$ev:/evidence" "$image" -i /opt/physics/ci/runtime-database-smoke.i Outputs/file_base=/evidence/runtime-db 2>&1 | tee "$ev/runtime-db.log"
+          python3 runtime-image/verify-runtime.py "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db" "$ev/native-db.csv" "$ev/runtime-db.csv" | tee "$ev/runtime-verification.txt"
+          echo PHYSICS_ISOLATED_RUNTIME_PASS
       - name: Upload build evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

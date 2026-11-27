@@ -1114,7 +1114,28 @@
       "blob": "5eac82a33930ef06ef11aa56f652ef08f8e0ae8f"
     }
   ],
-  "held": [
+  "recipes": [
+    {
+      "original": "ci/physics-build-base/Dockerfile",
+      "path": "build-base/Dockerfile",
+      "blob": "ac1cb0a4e77ca3c283de2a6711a56eaccaba6839"
+    },
+    {
+      "original": "ci/physics-build-base/Makefile",
+      "path": "build-base/Makefile",
+      "blob": "9d78260726dc51bb7193da71270e6035155c4a73"
+    },
+    {
+      "original": "LICENSE",
+      "path": "build-base/LICENSE",
+      "blob": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64"
+    }
+  ],
+  "ownership": "snapshot; original canonical owner unchanged",
+  "source_pull_request": 903,
+  "source_state": "open draft; owner-selected snapshot, not accepted upstream",
+  "previous_source_commit": "19cb056d48d82c856ccf703ddd69860bc0789ac8",
+  "excluded": [
     {
       "path": "physics_app/database/o2_attachment.txt",
       "mode": "100644",
@@ -1151,26 +1172,5 @@
       "blob": "43d73a4f8a70ea1fb262383e71164d8f18844ae8"
     }
   ],
-  "held_reason": "Legacy electron-impact reference table origin and redistribution qualification pending; not identified as protected archive data.",
-  "recipes": [
-    {
-      "original": "ci/physics-build-base/Dockerfile",
-      "path": "build-base/Dockerfile",
-      "blob": "ac1cb0a4e77ca3c283de2a6711a56eaccaba6839"
-    },
-    {
-      "original": "ci/physics-build-base/Makefile",
-      "path": "build-base/Makefile",
-      "blob": "9d78260726dc51bb7193da71270e6035155c4a73"
-    },
-    {
-      "original": "LICENSE",
-      "path": "build-base/LICENSE",
-      "blob": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64"
-    }
-  ],
-  "ownership": "snapshot; original canonical owner unchanged",
-  "source_pull_request": 903,
-  "source_state": "open draft; owner-selected snapshot, not accepted upstream",
-  "previous_source_commit": "19cb056d48d82c856ccf703ddd69860bc0789ac8"
+  "exclusion_reason": "Owner explicitly excludes seven legacy reference rate tables from the migration scope. No coefficient substitution. Legacy tests depending on excluded tables remain outside acceptance."
 }
