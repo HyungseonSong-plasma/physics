@@ -285,7 +285,6 @@ jobs:
           } | sudo tee runtime-image/runtime-root/opt/physics/RUNTIME_PROVENANCE.txt | tee "$ev/RUNTIME_PROVENANCE.txt"
           test -s "$ev/native-db.csv"
           df -h /
-          docker image rm "$BASE_IMAGE" || true
       - name: Build local scratch runtime and verify isolated execution
         shell: bash
         run: |
@@ -317,7 +316,47 @@ jobs:
           timeout 180 docker run --rm --network none -v "$ev:/evidence" "$image" -i /opt/physics/ci/runtime-database-smoke.i Outputs/file_base=/evidence/runtime-db 2>&1 | tee "$ev/runtime-db.log"
           python3 runtime-image/verify-runtime.py "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db" "$ev/native-db.csv" "$ev/runtime-db.csv" | tee "$ev/runtime-verification.txt"
           echo PHYSICS_ISOLATED_RUNTIME_PASS
-      - name: Stage exact public EI candidate and run S6-417 in independent runtime
+      - name: Build JIT-capable diagnostic runtime using pinned build base
+        shell: bash
+        run: |
+          set -euo pipefail
+          ev="$RUNNER_TEMP/physics-evidence"
+          scratch="physics-runtime:ci-$GITHUB_SHA"
+          image="physics-runtime-jit:ci-$GITHUB_SHA"
+          # Use the already verified binary/data closure and the same immutable
+          # compiler, shell and headers. Keep dependency libs from the base.
+          # This diagnostic is intentionally not the final minimal JIT closure.
+          docker build --network none --platform linux/amd64 \
+            --build-arg BASE_IMAGE="$BASE_IMAGE" \
+            --build-arg REPOSITORY_SHA="$GITHUB_SHA" \
+            -t "$image" -f - runtime-image <<'DOCKERFILE'
+          ARG BASE_IMAGE
+          FROM ${BASE_IMAGE}
+          ARG REPOSITORY_SHA
+          LABEL org.opencontainers.image.source="https://github.com/HyungseonSong-plasma/physics" \
+                org.opencontainers.image.revision="${REPOSITORY_SHA}" \
+                io.physics.runtime.mode="jit-diagnostic-build-base"
+          COPY runtime-root/opt/physics/ /opt/physics/
+          ENV OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+          WORKDIR /work
+          ENTRYPOINT ["/bin/bash","-lc","set -euo pipefail; source /environment; export LD_LIBRARY_PATH=/opt/physics/test/lib:/opt/physics/lib:${LD_LIBRARY_PATH:-}; exec /opt/physics/physics-opt \"$@\"","physics-opt"]
+          DOCKERFILE
+          docker image inspect "$image" --format '{{.Id}} {{.Size}} {{.Os}}/{{.Architecture}}' | tee "$ev/jit-runtime-image.txt"
+          docker run --rm --network none --entrypoint /bin/bash "$image" -lc '
+            set -euo pipefail
+            source /environment
+            command -v c++
+            c++ --version | head -1
+            test -r /opt/physics_vendor/moose/framework/include/utils/ADReal.h
+            find /opt/physics_vendor/moose/framework -name MooseConfig.h -print -quit
+            sha256sum /opt/physics/physics-opt
+          ' | tee "$ev/jit-runtime-toolchain.txt"
+          test "$(tail -1 "$ev/jit-runtime-toolchain.txt" | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
+          timeout 180 docker run --rm --network none "$image" -i /opt/physics/ci/smoke.i 2>&1 | tee "$ev/jit-runtime-steady.log"
+          timeout 180 docker run --rm --network none -v "$ev:/evidence" "$image" -i /opt/physics/ci/runtime-database-smoke.i Outputs/file_base=/evidence/jit-db 2>&1 | tee "$ev/jit-runtime-db.log"
+          python3 runtime-image/verify-runtime.py "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db" "$ev/native-db.csv" "$ev/jit-db.csv" | tee "$ev/jit-runtime-verification.txt"
+          docker image rm "$scratch" || true
+      - name: Stage exact public EI candidate and run S6-417 in JIT-capable runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -336,11 +375,11 @@ jobs:
           assert not any(p.name=="private_rates" for p in target.rglob("*"))
           record["science"]="SCIENCE_HOLD"
           record["execution_scope"]="one parent timestep; original physical inputs and layer order"
-          record["runtime_source_sha"]="fd8468c346ec219ca4acd127de4d578dfc252d93"
+          record["runtime_source_sha"]=os.environ["GITHUB_SHA"]
           (ev/"newonly-stage.json").write_text(json.dumps(record,indent=2)+"\n")
           print("NEWONLY_417_PUBLIC_STAGE_PASS")
           PY
-          image="physics-runtime:ci-$GITHUB_SHA"
+          image="physics-runtime-jit:ci-$GITHUB_SHA"
           mapfile -t layers < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["ordered"]))' "$ev/newonly-stage.json")
           test "${#layers[@]}" -eq 11
           stage="$RUNNER_TEMP/newonly-417"
