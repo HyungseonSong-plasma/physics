@@ -1,4 +1,5 @@
 name: Physics native build and flat assets
+run-name: Physics native CI / ${{ github.ref_name }} / ${{ github.sha }}
 on:
   push:
     branches: [migration/unified-mesh, feature/exodus-output, main]
