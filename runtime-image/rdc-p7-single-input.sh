@@ -61,19 +61,24 @@ PY
 opts=(--network none --workdir /case
   --env OXYGEN_RESEARCH_400=1 --env OXYGEN_RESEARCH_FULL24=0
   --env OXYGEN_RESEARCH_EI2738_FORMULA=0 --env OXYGEN_RESEARCH_QUICK_5MIN=0
-  --mount "type=bind,src=$case_dir,dst=/case"
   --mount "type=bind,src=$single,dst=/evidence")
 output_args=(Executioner/num_steps=1
   Outputs/file_base=/evidence/fields/parent Outputs/exodus=true Outputs/csv=true
   Outputs/time_step_interval=1 'Outputs/execute_on=INITIAL TIMESTEP_END' Outputs/checkpoint=false)
-timeout 480 docker run --rm "${opts[@]}" "$image" --check-input \
+timeout 480 docker run --rm "${opts[@]}" \
+  --mount "type=bind,src=$case_dir,dst=/case" "$image" --check-input \
   -i "$parent" "${output_args[@]}" 2>&1 | tee "$single/newonly-check-input.log"
 grep -q 'Syntax OK' "$single/newonly-check-input.log"
-# A fresh staged copy for cold solve (check-input may generate JIT files).
-rm -rf "$case_dir"
-cp -a "$stage" "$case_dir"
-cp "$single/input.i" "$case_dir/$parent"
-timeout 1800 docker run --rm "${opts[@]}" "$image" \
+# Use a separate staged copy for cold solve. Check-input can leave a
+# container-owned .jitcache which the unprivileged host cannot remove.
+# Do not delete, chmod, or reuse the check-input directory.
+cold_dir="$RUNNER_TEMP/p7-single-cold"
+test ! -e "$cold_dir"
+cp -a "$stage" "$cold_dir"
+test ! -e "$cold_dir/.jitcache"
+cp "$single/input.i" "$cold_dir/$parent"
+timeout 1800 docker run --rm "${opts[@]}" \
+  --mount "type=bind,src=$cold_dir,dst=/case" "$image" \
   -i "$parent" "${output_args[@]}" 2>&1 | tee "$single/newonly-one-step.log"
 docker run --rm --network none --entrypoint /bin/bash --user 0:0 \
   -v "$ev:/evidence" -v "$stage:/case:ro" \
