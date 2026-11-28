@@ -28,7 +28,7 @@
     fv = true
     block = active
     initial_condition = 1
-    two_term_boundary_expansion = true
+    # MooseVariableFV uses two_term_boundary_expansion=true by default.
   []
 []
 [Functions]
