@@ -95,17 +95,14 @@
   []
   [w_O2s]
     type = INSFVScalarFieldVariable
-    initial_condition = 1.000010000100001e-05
     block = plasma
   []
   [w_O]
     type = INSFVScalarFieldVariable
-    initial_condition = 5.0000500005000049e-06
     block = plasma
   []
   [w_Os]
     type = INSFVScalarFieldVariable
-    initial_condition = 5.0000500005000049e-06
     block = plasma
   []
   [potential]
@@ -221,103 +218,16 @@
     block = plasma
   []
 
-  [neutral_state_dot_aliases]
-    type = ADGenericFunctorMaterial
-    prop_names = 'p_state wO_state wOs_state'
-    prop_values = 'pressure w_O w_Os'
-    define_dot_functors = true
-    block = plasma
-  []
 
-  [neutral_O2_constraint]
-    type = ADParsedFunctorMaterial
-    property_name = w_O2_constraint
-    functor_names = 'w_O2s w_O w_Os'
-    functor_symbols = 's o a'
-    expression = '1.0-s-o-a'
-    block = plasma
-  []
 
-  [neutral_mean_molar_mass]
-    type = ADParsedFunctorMaterial
-    property_name = Mn_neutral
-    functor_names = 'w_O2_constraint w_O2s w_O w_Os'
-    functor_symbols = 'm0 m1 m2 m3'
-    expression = '1.0/(m0/0.032+m1/0.032+m2/0.016+m3/0.016)'
-    block = plasma
-  []
 
-  [neutral_density]
-    type = ADParsedFunctorMaterial
-    property_name = rho_neutral
-    functor_names = 'pressure Mn_neutral temperature'
-    functor_symbols = 'prs mol tmp'
-    expression = 'prs*mol/(8.31446*tmp)'
-    block = plasma
-  []
 
   # A = w_O + w_O*. Molecular redistribution O2 <-> O2* leaves Mn unchanged.
   # Mn = 0.032/(1+A), hence dMn/dt = -31.25*Mn^2*dA/dt.
-  [neutral_mean_molar_mass_dot]
-    type = ADParsedFunctorMaterial
-    property_name = dMn_neutral_dt
-    functor_names = 'Mn_neutral dwO_state_dt dwOs_state_dt'
-    functor_symbols = 'mn dwo dwos'
-    expression = '-31.25*mn*mn*(dwo+dwos)'
-    block = plasma
-  []
 
   # Isothermal Stage-B flow: rho = pressure*Mn/(R*Tg).
-  [neutral_density_dot]
-    type = ADParsedFunctorMaterial
-    property_name = drho_neutral_dt
-    functor_names = 'pressure Mn_neutral dp_state_dt dMn_neutral_dt temperature'
-    functor_symbols = 'prs mn dp dmn tmp'
-    expression = '(mn*dp+prs*dmn)/(8.31446*tmp)'
-    block = plasma
-  []
 
-  [neutral_sum_w]
-    type = ADParsedFunctorMaterial
-    property_name = neutral_sum_w_functor
-    functor_names = 'w_O2_constraint w_O2s w_O w_Os'
-    functor_symbols = 'q0 q1 q2 q3'
-    expression = 'q0+q1+q2+q3'
-    block = plasma
-  []
 
-  [rho_w_O2]
-    type = ADParsedFunctorMaterial
-    property_name = rho_w_O2
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w'
-    block = plasma
-  []
-  [rho_w_O2s]
-    type = ADParsedFunctorMaterial
-    property_name = rho_w_O2s
-    functor_names = 'rho_neutral w_O2s'
-    functor_symbols = 'rho w'
-    expression = 'rho*w'
-    block = plasma
-  []
-  [rho_w_O]
-    type = ADParsedFunctorMaterial
-    property_name = rho_w_O
-    functor_names = 'rho_neutral w_O'
-    functor_symbols = 'rho w'
-    expression = 'rho*w'
-    block = plasma
-  []
-  [rho_w_Os]
-    type = ADParsedFunctorMaterial
-    property_name = rho_w_Os
-    functor_names = 'rho_neutral w_Os'
-    functor_symbols = 'rho w'
-    expression = 'rho*w'
-    block = plasma
-  []
 
   [neutral_transport]
     type = NVTransportMaterial
@@ -1361,26 +1271,6 @@
     boundary = inlet
     execute_on = INITIAL
   []
-  [neutral_inlet_mdot]
-    type = Receiver
-    default = 4.758967769568476e-06
-  []
-  [neutral_inlet_mdot_O2]
-    type = Receiver
-    default = 4.7588725892612807e-06
-  []
-  [neutral_inlet_mdot_O2s]
-    type = Receiver
-    default = 4.759015359722073e-11
-  []
-  [neutral_inlet_mdot_O]
-    type = Receiver
-    default = 2.3795076798610365e-11
-  []
-  [neutral_inlet_mdot_Os]
-    type = Receiver
-    default = 2.3795076798610365e-11
-  []
 
   [neutral_outlet_mass]
     type = VolumetricFlowRate
@@ -2375,6 +2265,20 @@ faraday_t6 = 96485.33212331001
     pressure = 1.333223684
     temperature = 300
     state_model = ideal_gas
+    # Solved-pressure neutral mixture; separate from charged Chemistry species.
+    sccm = 200
+    inlet_boundaries = inlet
+    inlet_area = 0.05954574715614091
+    inlet_species_bc_ownership = external_flux
+    neutral_species = 'O2 O2s O Os'
+    neutral_molar_masses = '0.032 0.032 0.016 0.016'
+    neutral_fraction_names = 'w_O2_constraint w_O2s w_O w_Os'
+    neutral_initial_fractions = '0.9999799997999979 1.000010000100001e-5 5.0000500005000049e-6 5.0000500005000049e-6'
+    neutral_inlet_fractions = '0.9999799997999979 1.000010000100001e-5 5.000050000500005e-6 5.000050000500005e-6'
+    neutral_dependent_species = O2
+    neutral_blocks = plasma
+    # Retain S6 numerical constant for controlled A/B.
+    neutral_eos_gas_constant = 8.31446
     [Poisson]
       fem_potential = potential
     []

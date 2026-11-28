@@ -35,6 +35,37 @@ for kind in "${kinds[@]}"; do
   done
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$out:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/verify-flat.py /evidence'
 done
+# Verify declared SCCM area against actual geometry and conservative feed.
+python3 - "$ev" <<'PY'
+import csv, math, pathlib, sys
+root=pathlib.Path(sys.argv[1])
+for kind in ("baseline","conformal"):
+    with (root/kind/"fields/parent.csv").open() as f:
+        rows=list(csv.DictReader(f))
+    for row in rows:
+        area=float(row["neutral_inlet_area"])
+        mdot=float(row["neutral_inlet_mdot"])
+        parts=sum(float(row["neutral_inlet_mdot_"+s]) for s in ("O2","O2s","O","Os"))
+        assert math.isclose(area,0.05954574715614091,rel_tol=1e-10),area
+        assert math.isclose(mdot,4.758967769568476e-6,rel_tol=1e-12),mdot
+        assert math.isclose(parts,mdot,rel_tol=1e-12),(parts,mdot)
+print("SOLVED_NEUTRAL_SCCM_FEED_AND_GEOMETRY_PASS")
+PY
+# Negative control: incomplete inlet fraction must fail native construction.
+bad="$RUNNER_TEMP/flat-neutral-negative"
+mkdir "$bad"; cp -a assets "$bad/assets"
+sed -i "s/neutral_inlet_fractions = '.*/neutral_inlet_fractions = '0.5 0 0 0'/" "$bad/assets/input.i"
+set +e
+timeout 480 docker run --rm "${opts[@]}" -v "$bad:/case" "$BASE_IMAGE" -lc '
+  source /environment
+  export LD_LIBRARY_PATH=/workspace/app/test/lib:/workspace/app/lib:${LD_LIBRARY_PATH:-}
+  exec /workspace/app/physics-opt "$@"
+' physics-opt --check-input -i assets/input.i >"$ev/neutral-negative.log" 2>&1
+rc=$?
+set -e
+test "$rc" -ne 0 && test "$rc" -ne 124
+grep -q "Invalid solved neutral mixture" "$ev/neutral-negative.log"
+echo SOLVED_NEUTRAL_NEGATIVE_PASS
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
 if test "${#kinds[@]}" -eq 2; then
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/compare-unified.py /evidence'

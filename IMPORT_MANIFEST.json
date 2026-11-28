@@ -1219,7 +1219,7 @@
       "source_path": "physics_app/src/physics/plasma/Chemistry.C",
       "path": "app/src/physics/plasma/Chemistry.C",
       "mode": "100644",
-      "blob": "5815f9bc6c1d25c01ff0783a9ee2115d51565859"
+      "blob": "b11a022ea149b63610cfafb3f770bbbcfaddab8e"
     },
     {
       "source_path": "physics_app/src/physics/plasma/DDContinuityEq.C",
@@ -1491,13 +1491,21 @@
   },
   "new_only_assets": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "stage": "P1_CANDIDATE_POISSON_MAXWELL_OPERATORS_ONLY",
+    "stage": "P2_CANDIDATE_SOLVED_NEUTRAL_SCCM_EOS",
     "candidate_blobs": {
-      "assets/input.i": "6611dc398a776241e89b62481136e029aff274f9",
+      "assets/input.i": "31acf6066ef3ee5adff6ed4fb83c905afeab0cba",
       "assets/maxwell.i": "c317fbbb7a55eee52a22e65db7e6349c54f0cebd",
       "assets/chemistry.json": "9cfdfa2286dae1c4d1a6cb5bd85fb8b086b1f010"
     },
-    "retained": "Native NS/SCCM/EI/elastic, RF coil source and drive; full cutover pending #11",
-    "science": "SCIENCE_HOLD"
+    "retained": "Native NVTransportMaterial and neutral PDE/BC objects, EI/elastic, RF coil source; full cutover pending #11",
+    "science": "SCIENCE_HOLD",
+    "source_delta": [
+      {
+        "path": "app/src/physics/plasma/Chemistry.C",
+        "import_blob": "5815f9bc6c1d25c01ff0783a9ee2115d51565859",
+        "candidate_blob": "b11a022ea149b63610cfafb3f770bbbcfaddab8e",
+        "reason": "Solved neutral mixture and SCCM owner; preserve historical lane and exact legacy EOS constant."
+      }
+    ]
   }
 }
