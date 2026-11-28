@@ -1491,7 +1491,7 @@
   },
   "parent_exodus": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "parent_input_blob": "0dfc8b36df19b6a8ece34237505e81bf61e06daf",
+    "parent_input_blob": "e49530e23712c06052819a5d04e87b4a9bd74b21",
     "mesh_unchanged": true,
     "mode": "Parent full 14 volume blocks plus 3 lower-dimensional surface blocks; dedicated visualization-only RF auxiliary variables; child output disabled",
     "status": "PENDING_NATIVE_PARITY_AND_OUTPUT_VALIDATION",
@@ -1513,6 +1513,79 @@
       "reason": "Maxwell-only output domain; Parent nonlinear physics is block restricted",
       "failure_run": 46153046583,
       "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9"
+    },
+    "boundary_owner_policy": {
+      "failure_run": 46153685336,
+      "method": "Filter existing geometric sidesets by original Parent primary block and Maxwell-only paired block; delete two-sided copies and restore original names",
+      "groups": [
+        {
+          "name": "inlet",
+          "primary": "plasma",
+          "paired": [
+            "port"
+          ]
+        },
+        {
+          "name": "outlet",
+          "primary": "plasma",
+          "paired": [
+            "bottom"
+          ]
+        },
+        {
+          "name": "plasma_electrode",
+          "primary": "plasma",
+          "paired": [
+            "electrode"
+          ]
+        },
+        {
+          "name": "plasma_metal",
+          "primary": "plasma",
+          "paired": [
+            "metal"
+          ]
+        },
+        {
+          "name": "plasma_right",
+          "primary": "plasma",
+          "paired": [
+            "right"
+          ]
+        },
+        {
+          "name": "wafer_electrode",
+          "primary": "wafer",
+          "paired": [
+            "electrode"
+          ]
+        },
+        {
+          "name": "focus_ring_ground",
+          "primary": "focus_ring",
+          "paired": [
+            "electrode",
+            "bottom",
+            "metal"
+          ]
+        },
+        {
+          "name": "cover_outer_right",
+          "primary": "cover",
+          "paired": [
+            "top"
+          ]
+        },
+        {
+          "name": "vacuum_outer_ground",
+          "primary": "vacuum",
+          "paired": [
+            "top"
+          ]
+        }
+      ],
+      "integrity_checks": "enabled",
+      "scope": "9 former external interfaces; retain other common-block and axis sidesets"
     }
   }
 }

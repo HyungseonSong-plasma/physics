@@ -20,12 +20,96 @@
     type = FileMeshGenerator
     file = 'mesh.msh'
   []
+  # Keep the original boundary geometry, but retain only the Parent owner side.
+  [owner_inlet]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = main
+    primary_block = plasma
+    paired_block = 'port'
+    included_boundaries = inlet
+    new_boundary = parent_inlet
+  []
+  [owner_outlet]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_inlet
+    primary_block = plasma
+    paired_block = 'bottom'
+    included_boundaries = outlet
+    new_boundary = parent_outlet
+  []
+  [owner_plasma_electrode]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_outlet
+    primary_block = plasma
+    paired_block = 'electrode'
+    included_boundaries = plasma_electrode
+    new_boundary = parent_plasma_electrode
+  []
+  [owner_plasma_metal]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_plasma_electrode
+    primary_block = plasma
+    paired_block = 'metal'
+    included_boundaries = plasma_metal
+    new_boundary = parent_plasma_metal
+  []
+  [owner_plasma_right]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_plasma_metal
+    primary_block = plasma
+    paired_block = 'right'
+    included_boundaries = plasma_right
+    new_boundary = parent_plasma_right
+  []
+  [owner_wafer_electrode]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_plasma_right
+    primary_block = wafer
+    paired_block = 'electrode'
+    included_boundaries = wafer_electrode
+    new_boundary = parent_wafer_electrode
+  []
+  [owner_focus_ring_ground]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_wafer_electrode
+    primary_block = focus_ring
+    paired_block = 'electrode bottom metal'
+    included_boundaries = focus_ring_ground
+    new_boundary = parent_focus_ring_ground
+  []
+  [owner_cover_outer_right]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_focus_ring_ground
+    primary_block = cover
+    paired_block = 'top'
+    included_boundaries = cover_outer_right
+    new_boundary = parent_cover_outer_right
+  []
+  [owner_vacuum_outer_ground]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_cover_outer_right
+    primary_block = vacuum
+    paired_block = 'top'
+    included_boundaries = vacuum_outer_ground
+    new_boundary = parent_vacuum_outer_ground
+  []
+  [drop_two_sided_cut_boundaries]
+    type = BoundaryDeletionGenerator
+    input = owner_vacuum_outer_ground
+    boundary_names = 'inlet outlet plasma_electrode plasma_metal plasma_right wafer_electrode focus_ring_ground cover_outer_right vacuum_outer_ground'
+  []
+  [restore_parent_boundary_names]
+    type = RenameBoundaryGenerator
+    input = drop_two_sided_cut_boundaries
+    old_boundary = 'parent_inlet parent_outlet parent_plasma_electrode parent_plasma_metal parent_plasma_right parent_wafer_electrode parent_focus_ring_ground parent_cover_outer_right parent_vacuum_outer_ground'
+    new_boundary = 'inlet outlet plasma_electrode plasma_metal plasma_right wafer_electrode focus_ring_ground cover_outer_right vacuum_outer_ground'
+  []
   [plasma_cover_owner]
     type = SideSetsBetweenSubdomainsGenerator
     primary_block = plasma
     paired_block = cover
     new_boundary = plasma_cover_owner
-    input = main
+    input = restore_parent_boundary_names
   []
   [plasma_wafer_owner]
     type = SideSetsBetweenSubdomainsGenerator
