@@ -1586,6 +1586,31 @@
       ],
       "integrity_checks": "enabled",
       "scope": "9 former external interfaces; retain other common-block and axis sidesets"
+    },
+    "face_info_fix": {
+      "failure_run": 46154853860,
+      "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9",
+      "scope": "Resolve existing FaceInfo through the conformal neighbor when current side does not own the cache entry; preserve existing plasma-side selection and flux equations.",
+      "source_changes": [
+        {
+          "path": "app/src/bcs/FEMElectronSheathBC.C",
+          "mode": "100644",
+          "original_blob": "78d8489f8e98ecdfb134c4b5620fd66544a8ca52",
+          "blob": "a69148c2caea263dba5f1af2f0aa269caf22ef4d"
+        },
+        {
+          "path": "app/src/bcs/FEMElectronEnergySheathBC.C",
+          "mode": "100644",
+          "original_blob": "2ca0f695d8d801b28ebdaec8a32c3847a8a00a58",
+          "blob": "e5771bec8770dbf82bdae53460f66e3f57c94d69"
+        },
+        {
+          "path": "app/include/utils/PhysicsBoundaryFaceInfo.h",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "2390e695b0be8ec7a287bf371e279bcdd00199e1"
+        }
+      ]
     }
   }
 }

@@ -4,6 +4,7 @@
 #include "MooseFunctorArguments.h"
 #include "MooseMesh.h"
 #include "Physics.h"
+#include "PhysicsBoundaryFaceInfo.h"
 
 /**
  * Shared plasma-side FaceArg evaluation for the Issue 395 electron particle and
@@ -19,7 +20,7 @@ plasmaSideElectronWallNumberFlux(MooseMesh & mesh,
                                  const unsigned int side,
                                  const Moose::Functor<ADReal> & flux)
 {
-  const FaceInfo * const fi = mesh.faceInfo(elem, side);
+  const FaceInfo * const fi = PhysicsBoundaryFaceInfo::find(mesh, elem, side);
   if (!fi)
     mooseError("Field-limited FEM electron BC could not obtain FaceInfo.");
 

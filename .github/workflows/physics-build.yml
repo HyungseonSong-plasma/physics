@@ -44,7 +44,16 @@ jobs:
               current[p.decode()] = (mode,sha)
           # Initial snapshot integrity is evidence, not a permanent source freeze:
           # later reviewed source changes require explicit manifest update.
-          assert current == expected, "Source differs from reviewed import manifest"
+          # Preserve original import provenance; overlay only explicit, reviewed source changes.
+          for e in m["parent_exodus"]["face_info_fix"]["source_changes"]:
+              p=e["path"]
+              assert p.startswith("app/")
+              if e["original_blob"] is None:
+                  assert p not in expected,p
+              else:
+                  assert expected[p]==(e["mode"],e["original_blob"]),p
+              expected[p]=(e["mode"],e["blob"])
+          assert current == expected, "Source differs from reviewed import manifest and explicit changes"
           import hashlib
           def blob(p): return subprocess.check_output(["git","rev-parse","HEAD:"+p],text=True).strip()
           for e in m["included"]:

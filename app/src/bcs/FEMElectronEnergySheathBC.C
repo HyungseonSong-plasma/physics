@@ -4,6 +4,7 @@
 #include "MooseFunctorArguments.h"
 #include "MooseMesh.h"
 #include "Physics.h"
+#include "PhysicsBoundaryFaceInfo.h"
 
 /** Consumes the same electron-number flux; energy carried away is 5/2 T_e. */
 class FEMElectronEnergySheathBC : public ADIntegratedBC
@@ -56,7 +57,7 @@ FEMElectronEnergySheathBC::computeQpResidual()
       !_mean_energy.hasBlocks(block))
     return ADReal(0.0);
 
-  const FaceInfo * const fi = _mesh.faceInfo(_current_elem, _current_side);
+  const FaceInfo * const fi = PhysicsBoundaryFaceInfo::find(_mesh, _current_elem, _current_side);
   if (!fi)
     mooseError("Field-limited FEM electron energy BC could not obtain FaceInfo.");
   const bool on_elem = _wall_number_flux.hasFaceSide(*fi, true);
