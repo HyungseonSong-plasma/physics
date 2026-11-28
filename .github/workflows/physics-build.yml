@@ -1,4 +1,4 @@
-name: Physics Parent Exodus diagnostic
+name: FV block-boundary gradient diagnostic
 run-name: Physics native CI / ${{ github.ref_name }} / ${{ github.sha }}
 on:
   push:
@@ -134,20 +134,18 @@ jobs:
               echo PHYSICS_NATIVE_BUILD_AND_SMOKE_PASS
               date -u
             '
-      - name: Verify flat inputs with native binary
+      - name: Verify native block-boundary gradient
         shell: bash
         run: |
           set -euo pipefail
-          (cd assets && sha256sum -c mesh.sha256)
-          bash -n tests/mesh/diagnose-parent-exodus.sh
-          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/exodus-reader.py tests/mesh/verify-parent-exodus.py
-          python3 -m py_compile tests/mesh/diagnose-parent-exodus.py
-          bash tests/mesh/diagnose-parent-exodus.sh
+          bash -n tests/mesh/verify-boundary-gradient.sh
+          python3 -m py_compile tests/mesh/verify-boundary-gradient.py
+          bash tests/mesh/verify-boundary-gradient.sh
       - name: Upload bounded evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: physics-parent-exodus-diagnostics
+          name: fv-boundary-gradient-evidence
           path: ${{ runner.temp }}/physics-evidence/
           if-no-files-found: warn
           retention-days: 30

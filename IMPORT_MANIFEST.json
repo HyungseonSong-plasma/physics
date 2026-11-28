@@ -1609,8 +1609,20 @@
           "mode": "100644",
           "original_blob": null,
           "blob": "2390e695b0be8ec7a287bf371e279bcdd00199e1"
+        },
+        {
+          "path": "app/src/postprocessors/BoundaryGradientProbe.C",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "024fc4ceea573887e0cc51c5970fcef5fc210053"
         }
       ]
+    },
+    "gradient_diagnostic": {
+      "scope": "diagnostic branch only; no production FV variable or kernel changes",
+      "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9",
+      "probe": "app/src/postprocessors/BoundaryGradientProbe.C",
+      "manufactured_solution": "1+2*(x-2/3)+3*(y-1/3)"
     }
   }
 }
