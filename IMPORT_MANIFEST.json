@@ -1491,10 +1491,28 @@
   },
   "parent_exodus": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "parent_input_blob": "330f8447102e0bda53c9dfa7a9fa3fcacf957eba",
+    "parent_input_blob": "0dfc8b36df19b6a8ece34237505e81bf61e06daf",
     "mesh_unchanged": true,
     "mode": "Parent full 14 volume blocks plus 3 lower-dimensional surface blocks; dedicated visualization-only RF auxiliary variables; child output disabled",
     "status": "PENDING_NATIVE_PARITY_AND_OUTPUT_VALIDATION",
-    "time_semantics": "INITIAL RF values are unsolved initial state; each accepted parent endpoint carries latest TIMESTEP_BEGIN steady RF solve."
+    "time_semantics": "INITIAL RF values are unsolved initial state; each accepted parent endpoint carries latest TIMESTEP_BEGIN steady RF solve.",
+    "coverage_policy": {
+      "mode": "SKIP_LIST",
+      "blocks": [
+        "electrode",
+        "top",
+        "metal",
+        "right",
+        "bottom",
+        "port"
+      ],
+      "checks": [
+        "kernel",
+        "material"
+      ],
+      "reason": "Maxwell-only output domain; Parent nonlinear physics is block restricted",
+      "failure_run": 46153046583,
+      "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9"
+    }
   }
 }

@@ -4,6 +4,15 @@
 # Cover relative permittivity eps_r=3.6 follows the original QVT geometry/material provenance.
 # SEE is disabled in this first practical pilot; cover bulk-conductivity leakage is not yet modeled.
 
+# Maxwell-only regions carry output fields, not Parent nonlinear equations.
+# Keep kernel/material coverage checks active everywhere else.
+[Problem]
+  kernel_coverage_check = SKIP_LIST
+  kernel_coverage_block_list = 'electrode top metal right bottom port'
+  material_coverage_check = SKIP_LIST
+  material_coverage_block_list = 'electrode top metal right bottom port'
+[]
+
 [Mesh]
   coord_type = RZ
   rz_coord_axis = Y
