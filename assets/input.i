@@ -2379,7 +2379,7 @@ faraday_t6 = 96485.33212331001
   [maxwell_t6]
     type = FullSolveMultiApp
     input_files = 'maxwell.i'
-    cli_args = 'Outputs/exodus=false;Outputs/csv=false'
+    cli_args = 'Outputs/exodus=true;Outputs/csv=false'
     execute_on = TIMESTEP_BEGIN
     no_restore = true
   []
