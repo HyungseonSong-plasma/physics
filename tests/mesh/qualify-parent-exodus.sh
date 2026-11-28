@@ -4,7 +4,7 @@ ev="$RUNNER_TEMP/physics-evidence"
 root="$PWD"
 kinds=(candidate)
 if test "$GITHUB_REF" = refs/heads/feature/parent-exodus; then
-  kinds=(baseline candidate)
+  kinds=(baseline candidate candidate_rf_capture)
   git show 33195c79338b0597b462800109b81d6fbe75c932:assets/input.i >"$RUNNER_TEMP/baseline-input.i"
 fi
 opts=(--network none --workdir /case --entrypoint /bin/bash --user 0:0
@@ -21,6 +21,7 @@ for kind in "${kinds[@]}"; do
     test ! -e "$case_dir/assets/maxwell.msh"
     extra=()
     if test "$phase" = check; then extra=(--check-input); limit=480; log=newonly-check-input.log; else limit=1800; log=newonly-one-step.log; fi
+    if test "$kind" = candidate_rf_capture; then extra+=('MultiApps/maxwell_t6/cli_args=Outputs/exodus=true;Outputs/csv=false'); fi
     timeout "$limit" docker run --rm "${opts[@]}" -v "$case_dir:/case" -v "$out:/evidence" "$BASE_IMAGE" -lc '
       set -euo pipefail
       source /environment
@@ -32,6 +33,10 @@ for kind in "${kinds[@]}"; do
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$out:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/verify-flat.py /evidence'
 done
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
+if test "$GITHUB_REF" = refs/heads/feature/parent-exodus; then
+  # Separate child-enabled run: normal candidate still has exactly one output.
+  docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/diagnose-rf-transfer.py /evidence'
+fi
 mkdir "$RUNNER_TEMP/physics-exodus"
 docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" -v "$RUNNER_TEMP/physics-exodus:/results" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/verify-parent-exodus.py /evidence /results'
 echo NATIVE_PARENT_EXODUS_PASS

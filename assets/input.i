@@ -2524,7 +2524,11 @@ faraday_t6 = 96485.33212331001
     execute_on = SAME_AS_MULTIAPP
   []
   [ne_to_maxwell_t6]
-    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    type = CoincidentLocationTransfer
+    source_type = nodes
+    num_nearest_points = 1
+    coincidence_tolerance = 1e-12
+    error_on_miss = true
     to_multi_app = maxwell_t6
     source_variable = electron_density_rf_state_t6
     variable = electron_density_state_t6
@@ -2533,7 +2537,11 @@ faraday_t6 = 96485.33212331001
     execute_on = SAME_AS_MULTIAPP
   []
   [mean_en_to_maxwell_t6]
-    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    type = CoincidentLocationTransfer
+    source_type = nodes
+    num_nearest_points = 1
+    coincidence_tolerance = 1e-12
+    error_on_miss = true
     to_multi_app = maxwell_t6
     source_variable = mean_energy_rf_state_t6
     variable = mean_energy_state_t6
@@ -2542,7 +2550,11 @@ faraday_t6 = 96485.33212331001
     execute_on = SAME_AS_MULTIAPP
   []
   [pressure_to_maxwell_t6]
-    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    type = CoincidentLocationTransfer
+    source_type = centroids
+    num_nearest_points = 1
+    coincidence_tolerance = 1e-12
+    error_on_miss = true
     to_multi_app = maxwell_t6
     source_variable = pressure_rf_state_t6
     variable = pressure_state_t6

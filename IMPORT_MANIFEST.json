@@ -1491,7 +1491,7 @@
   },
   "parent_exodus": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "parent_input_blob": "9c8e45dd66bca29952a30b8d375b71c2e4ba97de",
+    "parent_input_blob": "72d4690663c80f70391246800901f5782c3cc93c",
     "mesh_unchanged": true,
     "mode": "Parent full 14 volume blocks plus 3 lower-dimensional surface blocks; dedicated visualization-only RF auxiliary variables; child output disabled",
     "status": "PENDING_NATIVE_PARITY_AND_OUTPUT_VALIDATION",
@@ -1633,6 +1633,18 @@
           "mode": "100644",
           "original_blob": null,
           "blob": "29b615468481b730beccf27d012056a253f45275"
+        },
+        {
+          "path": "app/include/transfers/CoincidentLocationTransfer.h",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "cffb89c45105a75b6ec56cb211c937fec31a2144"
+        },
+        {
+          "path": "app/src/transfers/CoincidentLocationTransfer.C",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "3b051d4495baa9029f971a9addb2bef6358444a4"
         }
       ]
     },
@@ -1665,6 +1677,18 @@
         "app/src/postprocessors/BoundaryVolumetricFlowRate.C"
       ],
       "scope": "application-only; native gradient and outward flow, fully developed neighbor handling; actual plasma parity pending; RF transfer unchanged"
+    },
+    "rf_transfer_fix": {
+      "status": "PENDING_NATIVE_VERIFICATION",
+      "source_run": 46159528370,
+      "previous_input_blob": "9c8e45dd66bca29952a30b8d375b71c2e4ba97de",
+      "scope": "three Parent to Maxwell transfers only; source DOF direct copy with distance <=1e-12, no interpolation/extrapolation; source/target plasma topology and actual state checked",
+      "source_types": {
+        "electron_density": "nodes",
+        "mean_energy": "nodes",
+        "pressure": "centroids"
+      },
+      "qualification": "actual child diagnostic output compared with source frozen states and baseline at both frames; strict full-model parity remains unchanged"
     }
   }
 }
