@@ -414,9 +414,14 @@ jobs:
           opts=(--network none --workdir /case
             --env OXYGEN_RESEARCH_400=1 --env OXYGEN_RESEARCH_FULL24=0
             --env OXYGEN_RESEARCH_EI2738_FORMULA=0 --env OXYGEN_RESEARCH_QUICK_5MIN=0)
+          # Validate the exact same output and solver overrides before tracing.
+          output_args=(Executioner/num_steps=1
+            Outputs/file_base=/evidence/fields/parent Outputs/exodus=true Outputs/csv=true
+            Outputs/time_step_interval=1 'Outputs/execute_on=INITIAL TIMESTEP_END' Outputs/checkpoint=false)
           timeout 480 docker run --rm "${opts[@]}" \
             --mount "type=bind,src=$RUNNER_TEMP/p7-check,dst=/case" \
-            "$image" --check-input -i "${layers[@]}" 2>&1 | tee "$ev/newonly-check-input.log"
+            --mount "type=bind,src=$ev,dst=/evidence" \
+            "$image" --check-input -i "${layers[@]}" "${output_args[@]}" 2>&1 | tee "$ev/newonly-check-input.log"
           grep -q 'Syntax OK' "$ev/newonly-check-input.log"
           # Attach the runner's own strace to the trusted container process
           # before executing Physics, avoiding package changes to the pinned base.
@@ -431,9 +436,7 @@ jobs:
               touch /evidence/rdc-p7-ready
               until test -f /evidence/rdc-p7-go; do sleep 0.1; done
               exec /opt/physics/physics-opt "$@"' physics-opt \
-            -i "${layers[@]}" Executioner/num_steps=1 \
-            Outputs/file_base=/evidence/fields/parent Outputs/exodus=true Outputs/csv=true \
-            Outputs/interval=1 'Outputs/execute_on=INITIAL TIMESTEP_END' Outputs/checkpoint=false)"
+            -i "${layers[@]}" "${output_args[@]}")
           trap 'docker logs "$cid" >"$ev/newonly-one-step.log" 2>&1 || true; docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
           docker start "$cid"
           for i in $(seq 1 100); do test -f "$ev/rdc-p7-ready" && break; sleep 0.1; done
@@ -454,15 +457,23 @@ jobs:
           touch "$ev/rdc-p7-go"
           rc="$(timeout 1800 docker wait "$cid")"
           docker logs "$cid" 2>&1 | tee "$ev/newonly-one-step.log"
-          wait "$tracer"
-          test "$rc" = 0
+          tracer_rc=0
+          wait "$tracer" || tracer_rc=$?
           docker rm "$cid"
           trap - EXIT
-          sudo -n PYTHONPATH="$PWD/rdc/src" python3 runtime-image/rdc-p7-trace.py "$trace" "$ev/rdc-p7-trace.json"
-          docker run --rm --network none --entrypoint /bin/bash --user 0:0 \
-            -v "$ev:/evidence" -v "$stage:/case:ro" \
-            -v "$PWD/runtime-image/verify-newonly-output.py:/verify-newonly-output.py:ro" \
-            "$BASE_IMAGE" -lc 'source /environment; python3 /verify-newonly-output.py /evidence 1e-9 /case'
+          # Preserve separate solver, tracer, parser, and numerical gate outcomes.
+          parse_rc=0
+          sudo -n PYTHONPATH="$PWD/rdc/src" python3 runtime-image/rdc-p7-trace.py "$trace" "$ev/rdc-p7-trace.json" || parse_rc=$?
+          numerical_rc=not-run
+          if test "$rc" = 0; then
+            numerical_rc=0
+            docker run --rm --network none --entrypoint /bin/bash --user 0:0 \
+              -v "$ev:/evidence" -v "$stage:/case:ro" \
+              -v "$PWD/runtime-image/verify-newonly-output.py:/verify-newonly-output.py:ro" \
+              "$BASE_IMAGE" -lc 'source /environment; python3 /verify-newonly-output.py /evidence 1e-9 /case' || numerical_rc=$?
+          fi
+          printf 'solver=%s\ntracer=%s\nparser=%s\nnumerical=%s\n' "$rc" "$tracer_rc" "$parse_rc" "$numerical_rc" | tee "$ev/rdc-p7-gates.txt"
+          test "$rc" = 0 && test "$tracer_rc" = 0 && test "$parse_rc" = 0 && test "$numerical_rc" = 0 || exit 1
           echo RDC_P7_FULL_RUNTIME_BASELINE_AND_TRACE_PASS
           df -h /
       - name: Upload bounded P7 evidence
