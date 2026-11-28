@@ -1631,6 +1631,14 @@
         "failure_run": 46162404428,
         "reason": "Remove unused explicit two_term_boundary_expansion from inferred variable action; pinned MooseVariableFV constructor and validParams both default true.",
         "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9"
+      },
+      "framework_patch": {
+        "scope": "disposable CI container only, rebuild linked framework, no dependency lock change or image publication",
+        "prior_pass_run": 46162765619,
+        "source_path": "framework/src/variables/MooseVariableFV.C",
+        "original_blob": "9b3439e294122c771c43630cf4efc19fdbe34b5a",
+        "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9",
+        "verification": "native adGradSln and normal flux <= 1e-10 on both owner orientations, initial and solved state"
       }
     }
   }

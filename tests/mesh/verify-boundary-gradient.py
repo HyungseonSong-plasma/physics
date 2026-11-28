@@ -24,18 +24,16 @@ else:
     data={}
     for case in cases:
         with (root/case/"probe.csv").open() as f: rows=list(csv.DictReader(f))
-        initial=[r for r in rows if float(r["time"])==0]
-        assert len(initial)==1,(case,rows)
-        data[case]={k:float(v) for k,v in initial[0].items()}
-    report={"scope":"native scalar FV, single skew TRI3 interface, affine manufactured state; no production change","exact_gradient":[2,3,0],"cases":data}
+        assert len(rows)==2 and [float(r["time"]) for r in rows]==[0,1],(case,rows)
+        data[case]={phase:{k:float(v) for k,v in r.items()} for phase,r in zip(("initial","solved"),rows)}
+    report={"scope":"native scalar FV, single skew TRI3 interface, affine manufactured state; patched native gradient; initial and solved state","exact_gradient":[2,3,0],"cases":data}
     (root/"gradient-report.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print(json.dumps(report,indent=2,sort_keys=True))
-    for case,d in data.items():
-        assert all(math.isfinite(v) for v in d.values()),case
-        assert d["cell_error"]<1e-10,("manufactured cell gradient",case,d)
-        assert d["corrected_error"]<1e-10,("candidate face stencil",case,d)
-        assert d["corrected_flux_error"]<1e-10,("candidate outward normal flux",case,d)
-    assert data["exterior"]["native_error"]<1e-10
-    for case in cases[1:]:assert data[case]["native_error"]>1e-3,("native mismatch not reproduced",case,data[case])
-    assert {round(data[c]["active_owner"]) for c in cases[1:]}=={0,1},"Both FaceInfo ownership orientations not exercised"
-    print("BLOCK_BOUNDARY_GRADIENT_REPRODUCED_AND_CANDIDATE_FORMULA_PASS")
+    for case,phases in data.items():
+        for phase,d in phases.items():
+            assert all(math.isfinite(v) for v in d.values()),(case,phase)
+            for metric in ("cell_error","corrected_error","corrected_flux_error","native_error","native_flux_error"):
+                assert d[metric]<1e-10,(case,phase,metric,d)
+    for phase in ("initial","solved"):
+        assert {round(data[c][phase]["active_owner"]) for c in cases[1:]}=={0,1},"Both FaceInfo ownership orientations not exercised"
+    print("PATCHED_MOOSE_NATIVE_BOUNDARY_GRADIENT_PASS")

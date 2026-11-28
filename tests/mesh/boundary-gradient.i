@@ -59,42 +59,42 @@
     variable = v
     boundary = active_interface
     metric = native_error
-    execute_on = INITIAL
+    execute_on = 'INITIAL TIMESTEP_END'
   []
   [corrected_error]
     type = BoundaryGradientProbe
     variable = v
     boundary = active_interface
     metric = corrected_error
-    execute_on = INITIAL
+    execute_on = 'INITIAL TIMESTEP_END'
   []
   [cell_error]
     type = BoundaryGradientProbe
     variable = v
     boundary = active_interface
     metric = cell_error
-    execute_on = INITIAL
+    execute_on = 'INITIAL TIMESTEP_END'
   []
   [native_flux_error]
     type = BoundaryGradientProbe
     variable = v
     boundary = active_interface
     metric = native_flux_error
-    execute_on = INITIAL
+    execute_on = 'INITIAL TIMESTEP_END'
   []
   [corrected_flux_error]
     type = BoundaryGradientProbe
     variable = v
     boundary = active_interface
     metric = corrected_flux_error
-    execute_on = INITIAL
+    execute_on = 'INITIAL TIMESTEP_END'
   []
   [active_owner]
     type = BoundaryGradientProbe
     variable = v
     boundary = active_interface
     metric = active_owner
-    execute_on = INITIAL
+    execute_on = 'INITIAL TIMESTEP_END'
   []
 []
 [Executioner]
