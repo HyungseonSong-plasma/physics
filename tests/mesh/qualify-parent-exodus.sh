@@ -33,5 +33,5 @@ for kind in "${kinds[@]}"; do
 done
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
 mkdir "$RUNNER_TEMP/physics-exodus"
-docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence:ro" -v "$root/tests/mesh:/scripts:ro" -v "$RUNNER_TEMP/physics-exodus:/results" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/verify-parent-exodus.py /evidence /results'
+docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" -v "$RUNNER_TEMP/physics-exodus:/results" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/verify-parent-exodus.py /evidence /results'
 echo NATIVE_PARENT_EXODUS_PASS

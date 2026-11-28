@@ -167,31 +167,31 @@
 
 [Variables]
   [u]
-    type = INSFVVelocityVariable
+    type = BoundaryINSFVVelocityVariable
     initial_condition = 0.0
     block = plasma
   []
   [v]
-    type = INSFVVelocityVariable
+    type = BoundaryINSFVVelocityVariable
     initial_condition = 0.0
     block = plasma
   []
   [pressure]
-    type = INSFVPressureVariable
+    type = BoundaryINSFVPressureVariable
     block = plasma
   []
   [w_O2s]
-    type = INSFVScalarFieldVariable
+    type = BoundaryINSFVScalarFieldVariable
     initial_condition = 1.000010000100001e-05
     block = plasma
   []
   [w_O]
-    type = INSFVScalarFieldVariable
+    type = BoundaryINSFVScalarFieldVariable
     initial_condition = 5.0000500005000049e-06
     block = plasma
   []
   [w_Os]
-    type = INSFVScalarFieldVariable
+    type = BoundaryINSFVScalarFieldVariable
     initial_condition = 5.0000500005000049e-06
     block = plasma
   []
@@ -1561,7 +1561,7 @@
   []
 
   [neutral_outlet_mass]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v
@@ -1570,7 +1570,7 @@
     execute_on = 'INITIAL TIMESTEP_END'
   []
   [neutral_outlet_mdot_O2]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v
@@ -1579,7 +1579,7 @@
     execute_on = 'INITIAL TIMESTEP_END'
   []
   [neutral_outlet_mdot_O2s]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v
@@ -1588,7 +1588,7 @@
     execute_on = 'INITIAL TIMESTEP_END'
   []
   [neutral_outlet_mdot_O]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v
@@ -1597,7 +1597,7 @@
     execute_on = 'INITIAL TIMESTEP_END'
   []
   [neutral_outlet_mdot_Os]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v

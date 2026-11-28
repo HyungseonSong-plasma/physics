@@ -1491,7 +1491,7 @@
   },
   "parent_exodus": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "parent_input_blob": "e49530e23712c06052819a5d04e87b4a9bd74b21",
+    "parent_input_blob": "9c8e45dd66bca29952a30b8d375b71c2e4ba97de",
     "mesh_unchanged": true,
     "mode": "Parent full 14 volume blocks plus 3 lower-dimensional surface blocks; dedicated visualization-only RF auxiliary variables; child output disabled",
     "status": "PENDING_NATIVE_PARITY_AND_OUTPUT_VALIDATION",
@@ -1609,8 +1609,62 @@
           "mode": "100644",
           "original_blob": null,
           "blob": "2390e695b0be8ec7a287bf371e279bcdd00199e1"
+        },
+        {
+          "path": "app/include/variables/BoundaryFVVariables.h",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "27fc125c90b4a2412c4abc24671dabf59e55b5b6"
+        },
+        {
+          "path": "app/src/variables/BoundaryFVVariables.C",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "35b6187468ef9b52e5d60e86a95d5a523d9157f3"
+        },
+        {
+          "path": "app/include/postprocessors/BoundaryVolumetricFlowRate.h",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "048b8ae1820dcf5f4d79c0cc6da93c4763709ef9"
+        },
+        {
+          "path": "app/src/postprocessors/BoundaryVolumetricFlowRate.C",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "29b615468481b730beccf27d012056a253f45275"
         }
       ]
+    },
+    "application_boundary_extensions": {
+      "qualification_run": 46165276109,
+      "qualified_commit": "e025b7edb89dcfc3ce566238e4cf2061df16f42d",
+      "original_input_blob": "e49530e23712c06052819a5d04e87b4a9bd74b21",
+      "classes": {
+        "INSFVVelocityVariable": {
+          "type": "BoundaryINSFVVelocityVariable",
+          "count": 2
+        },
+        "INSFVPressureVariable": {
+          "type": "BoundaryINSFVPressureVariable",
+          "count": 1
+        },
+        "INSFVScalarFieldVariable": {
+          "type": "BoundaryINSFVScalarFieldVariable",
+          "count": 3
+        },
+        "VolumetricFlowRate": {
+          "type": "BoundaryVolumetricFlowRate",
+          "count": 5
+        }
+      },
+      "source_paths": [
+        "app/include/variables/BoundaryFVVariables.h",
+        "app/src/variables/BoundaryFVVariables.C",
+        "app/include/postprocessors/BoundaryVolumetricFlowRate.h",
+        "app/src/postprocessors/BoundaryVolumetricFlowRate.C"
+      ],
+      "scope": "application-only; native gradient and outward flow, fully developed neighbor handling; actual plasma parity pending; RF transfer unchanged"
     }
   }
 }

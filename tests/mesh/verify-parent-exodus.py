@@ -13,6 +13,7 @@ candidate=root/"candidate/fields"
 base=root/"baseline/fields"
 RTOL=1e-9
 ATOL=1e-12
+parity_failures=[]
 class Data:
     def __init__(self,p):
         self.ex=reader.Exodus(p)
@@ -51,8 +52,10 @@ def compare(a,b,label):
     assert all((abs(x)<1e30)==(abs(y)<1e30) for x,y in zip(a,b)),label
     if not pairs:return {"count":0}
     mx=max(abs(x-y) for x,y in pairs);scale=max(abs(x) for x,y in pairs)
-    assert mx<=ATOL+RTOL*scale,(label,mx,scale)
-    return {"count":len(pairs),"max_abs_delta":mx,"max_relative_to_field_scale":mx/scale if scale else None}
+    passed=mx<=ATOL+RTOL*scale
+    if not passed:parity_failures.append({"label":label,"max_abs_delta":mx,"scale":scale,"allowed":ATOL+RTOL*scale})
+    norm=math.sqrt(sum(x*x for x,y in pairs))
+    return {"count":len(pairs),"max_abs_delta":mx,"max_relative_to_field_scale":mx/scale if scale else None,"relative_l2":math.sqrt(sum((x-y)**2 for x,y in pairs))/norm if norm else None,"pass":passed}
 def csvrows(p):
     with p.open() as f:return list(csv.DictReader(f))
 c=Data(candidate/"parent.e")
@@ -85,13 +88,13 @@ try:
             fields={}
             for frame in (0,1):
                 for name in b.nod:
-                    v=c.nodal(name,frame);fields[f"{frame}:nod:{name}"]=compare(b.nodal(name,frame),[v[j] for j in nmap],name)
+                    v=c.nodal(name,frame);fields[f"{frame}:nod:{name}"]=compare(b.nodal(name,frame),[v[j] for j in nmap],f"{frame}:nod:{name}")
                 for name in b.elem:
                     for i in b.ids:
                         a=b.elemental(name,i,frame)
                         if a is None:continue
                         v=c.elemental(name,i,frame);assert v is not None,(name,i)
-                        fields[f"{frame}:elem:{name}:{i}"]=compare(a,[v[j] for j in emap[i]],f"{name}:{i}")
+                        fields[f"{frame}:elem:{name}:{i}"]=compare(a,[v[j] for j in emap[i]],f"{frame}:elem:{name}:{i}")
             # Maxwell is the same geometry, and its steady time is an output index.
             assert set(child.coords)==set(c.coords)
             jmap=perm(child.coords,c.coords)
@@ -107,9 +110,18 @@ try:
             scalars={}
             for i,(x,y) in enumerate(zip(rows1,rows2)):
                 assert x.keys()==y.keys()
-                for k in x:scalars[f"{i}:{k}"]=compare([float(x[k])],[float(y[k])],k)
+                for k in x:
+                    scalars[f"{i}:{k}"]=compare([float(x[k])],[float(y[k])],f"{i}:csv:{k}")
+                    scalars[f"{i}:{k}"].update(baseline=float(x[k]),candidate=float(y[k]))
             report["baseline_parity"]={"fields":fields,"scalars":scalars,"maxwell_full_domain":rf}
         finally:b.close();child.close()
+    # Retain all measured mismatches even when the strict gate rejects output.
+    report["parity_failures"]=parity_failures
+    report["status"]="NATIVE_PARENT_EXODUS_FAIL" if parity_failures else "NATIVE_PARENT_EXODUS_PASS"
+    (root/"parent-exodus-parity.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
+    if base.exists():
+        print(json.dumps({"status":report["status"],"failed_comparisons":len(parity_failures),"flow":{k:v for k,v in fields.items() if k.startswith(("1:elem:u:","1:elem:v:","1:elem:pressure:","1:elem:w_O"))},"outlet":{k:v for k,v in scalars.items() if k.startswith("1:neutral_outlet")}},indent=2,sort_keys=True))
+    assert not parity_failures,("Strict baseline parity gate",len(parity_failures),parity_failures[:10])
     shutil.copyfile(candidate/"parent.e",dest/"physics.e")
     shutil.copyfile(candidate/"parent.csv",dest/"physics.csv")
     report["physics_e_sha256"]=reader.sha(dest/"physics.e")

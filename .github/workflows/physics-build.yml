@@ -131,6 +131,8 @@ jobs:
               set -e
               test "$rc" -ne 0 && test "$rc" -ne 124
               grep -q InvalidPhysicsPilotObject /evidence/negative.log
+              git -C "$MOOSE_DIR" diff --exit-code HEAD --
+              echo MOOSE_TRACKED_SOURCE_UNCHANGED_PASS
               echo PHYSICS_NATIVE_BUILD_AND_SMOKE_PASS
               date -u
             '
