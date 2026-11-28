@@ -1639,6 +1639,13 @@
         "original_blob": "9b3439e294122c771c43630cf4efc19fdbe34b5a",
         "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9",
         "verification": "native adGradSln and normal flux <= 1e-10 on both owner orientations, initial and solved state"
+      },
+      "flow_patch": {
+        "scope": "disposable CI only; one-sided flow-domain outward reporting; retain FaceInfo-oriented upwind and two-sided behavior; no production dependency change",
+        "source_path": "modules/navier_stokes/src/postprocessors/VolumetricFlowRate.C",
+        "original_blob": "c0f8eb4b2c3b1d103b860350a985d4937752a6d3",
+        "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9",
+        "verification": "actual VolumetricFlowRate with native Rhie-Chow provider average mode, prescribed velocity +/-2 and quantity 3, unit face, both ownership orientations and exterior"
       }
     }
   }
