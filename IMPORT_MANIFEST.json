@@ -1390,7 +1390,7 @@
   },
   "previous_import_head": "fd8468c346ec219ca4acd127de4d578dfc252d93",
   "layout_issue": 6,
-  "layout_status": "NATIVE_BUILD_AND_FLAT_ASSETS_BOUNDED_PARITY_PASS; SCIENCE_HOLD; ORIGINAL_MAXWELL_MESH_RETAINED",
+  "layout_status": "NATIVE_BUILD_AND_FLAT_ASSETS_BOUNDED_PARITY_PASS_ON_ORIGINAL_MESH; CONFORMAL_CANDIDATE_STAGED; FINAL_NATIVE_RECHECK_PENDING; SCIENCE_HOLD",
   "additional_assets": [
     {
       "source_repository": "HyungseonSong-plasma/moose-test-repo",
@@ -1428,7 +1428,7 @@
         "columns": 137,
         "rows": 2
       },
-      "endpoint_s": 1e-09,
+      "endpoint_s": 1e-9,
       "exodus": {
         "numeric_variables": 119,
         "values": 87968
@@ -1450,5 +1450,22 @@
     "source_parent_sha256": "7f221b51e81c39812bafa635e2f3e0fe6eeee8c0a9f8586bfd1b2ec2333fffce",
     "status": "FLAT_ASSETS_NUMERICAL_EQUIVALENCE_PASS",
     "actions_run_id": "46131743100"
+  },
+  "conformal_maxwell": {
+    "path": "assets/maxwell.msh",
+    "original_blob": "28ff31220904ff81f426d0c2ed8dd18a7fd40b9e",
+    "candidate_blob": "da8af4354d7cef5552bc7efccf3baf0da7d564bd",
+    "original_layout_commit": "054e99c90e95df9ea110b0244d10c7279a999f56",
+    "geometry_report": "tests/mesh/conformal-report.json",
+    "geometry_source_commit": "1342682004c06138ff2552db7c0c31997aec6d56",
+    "prior_physics_run": 46091351316,
+    "prior_physics_commit": "d2e690943fa1a4c51a2333a2e9eba40e36927ba7",
+    "scope": "400 W settings, one parent timestep (1 ns); differences measured, no scientific equivalence threshold approved",
+    "prior_observed": {
+      "absorbed_power_relative_delta": -0.0020346266216269564,
+      "parent_rf_power_relative_delta": -0.003967898813360171,
+      "E_real_relative_l2": 0.0023155274593820445,
+      "E_imag_relative_l2": 0.002817201039870806
+    }
   }
 }
