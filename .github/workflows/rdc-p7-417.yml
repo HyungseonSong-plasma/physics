@@ -1,8 +1,8 @@
-name: RDC P7 S6-417 baseline and trace
+name: S6-417 conformal Maxwell mesh comparison
 on:
   push:
-    branches: [test/rdc-p7-417]
-    paths: ['.github/workflows/rdc-p7-417.yml', 'runtime-image/rdc-p7-trace.py', 'runtime-image/rdc-p7-run.sh', 'runtime-image/rdc-p7-collection.py', 'assets/mesh.msh', 'assets/mesh.sha256', 'runtime-image/rdc-p7-single-input.sh', 'runtime-image/rdc-p7-compare.py']
+    branches: [test/maxwell-conformal-physics]
+    paths: ['.github/workflows/rdc-p7-417.yml', 'tests/mesh/**']
 permissions:
   contents: read
   actions: read
@@ -386,49 +386,24 @@ jobs:
           print("NEWONLY_417_PUBLIC_STAGE_PASS")
           PY
 
-      - name: Checkout exact reviewed RDC implementation
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          repository: HyungseonSong-plasma/rdc
-          ref: a460a7415e7b891db0da60bf1f7be11513a6b6b0
-          path: rdc
-          persist-credentials: false
-      - name: Qualify host tracer and reviewed RDC revision
+      - name: Reproduce and verify conformal mesh against original staged meshes
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C rdc rev-parse HEAD)" = "a460a7415e7b891db0da60bf1f7be11513a6b6b0"
-          test "$(uname -m)" = x86_64
-          python3 --version
-          strace --version
-          sudo -n true
-          PYTHONPATH="$PWD/rdc/src" python3 -c 'import rdc.discovery.trace; print("RDC_TRACE_IMPORT_PASS")'
-      - name: Trace actual S6-417 cold JIT and retain full-runtime numerical baseline
+          stage="$RUNNER_TEMP/newonly-417"
+          original="$stage/experiments/Issue18_qvt_plasma_mapping/qvt.msh"
+          test "$(git hash-object "$original")" = 28ff31220904ff81f426d0c2ed8dd18a7fd40b9e
+          node tests/mesh/conform-maxwell.js assets/mesh.msh "$original" "$RUNNER_TEMP/maxwell-reproduced.msh" >"$RUNNER_TEMP/physics-evidence/conformal-replay.json"
+          cmp "$RUNNER_TEMP/maxwell-reproduced.msh" tests/mesh/maxwell-conformal.msh
+          cp tests/mesh/conformal-report.json "$RUNNER_TEMP/physics-evidence/"
+      - name: Run identical baseline and conformal Maxwell candidate
         shell: bash
-        run: bash runtime-image/rdc-p7-run.sh
-      - name: Merge 11 layers using pinned HIT and compare single-input numerical results
-        shell: bash
-        run: bash runtime-image/rdc-p7-single-input.sh
-      - name: Materialize trace-selected RDC structural candidate
-        shell: bash
-        run: |
-          set -euo pipefail
-          ev="$RUNNER_TEMP/physics-evidence"
-          source="$RUNNER_TEMP/rdc-p7-source"
-          runtime="$RUNNER_TEMP/rdc-p7-rootfs"
-          mkdir "$source"
-          image="physics-runtime-jit:ci-$GITHUB_SHA"
-          docker run --rm --network none --read-only --user 0:0 --entrypoint /bin/bash \
-            -v "$ev:/evidence" -v "$source:/candidate-source" \
-            -v "$PWD/runtime-image/rdc-p7-collection.py:/profile.py:ro" \
-            "$image" -lc 'source /environment; python3 /profile.py stage /evidence /candidate-source'
-          PYTHONPATH="$PWD/rdc/src" python3 runtime-image/rdc-p7-collection.py collect "$ev" "$source" "$runtime"
-          df -h /
-      - name: Upload bounded P7 evidence
+        run: bash tests/mesh/compare-physics.sh
+      - name: Upload bounded mesh comparison evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: rdc-p7-417-baseline-evidence
+          name: maxwell-conformal-physics-evidence
           path: ${{ runner.temp }}/physics-evidence/
           if-no-files-found: warn
           retention-days: 30
