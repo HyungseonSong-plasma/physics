@@ -1390,7 +1390,7 @@
   },
   "previous_import_head": "fd8468c346ec219ca4acd127de4d578dfc252d93",
   "layout_issue": 6,
-  "layout_status": "STAGED_PATH_RELOCATION_ONLY; build/input path and equivalence gates pending",
+  "layout_status": "NATIVE_BUILD_AND_FLAT_ASSETS_BOUNDED_PARITY_PASS; SCIENCE_HOLD; ORIGINAL_MAXWELL_MESH_RETAINED",
   "additional_assets": [
     {
       "source_repository": "HyungseonSong-plasma/moose-test-repo",
@@ -1413,5 +1413,42 @@
       "path": "assets/o_elastic.txt",
       "blob": "de9d718cf197d129db5d02fc3141c92969eca860"
     }
-  ]
+  ],
+  "flat_input_qualification": {
+    "files": {
+      "chemistry.json": "4388e3251eb9d85eee866e8fbd58abd8bf3569dcd561551c36f57296a890de33",
+      "input.i": "a8d47a09de53ff4c6168cc5fe3fc062871534fe500a090f67c3ea6f30f8d883a",
+      "maxwell.i": "193b70daf494742fdcef6624c0d10ff2b3aec2f6789f2bc69a8398db69945c91"
+    },
+    "layout_commit": "bbe1d53f35dca500e508dbf33aab095b0e1c950a",
+    "maxwell_mesh": "ORIGINAL",
+    "numerical_comparison": {
+      "binary_sha256": "931d34e1dfa548dddfb4d6fdd8ff9b87be507de0df2f8e44c9c6351e80f17b37",
+      "csv": {
+        "columns": 137,
+        "rows": 2
+      },
+      "endpoint_s": 1e-09,
+      "exodus": {
+        "numeric_variables": 119,
+        "values": 87968
+      },
+      "input_sha256": "a8d47a09de53ff4c6168cc5fe3fc062871534fe500a090f67c3ea6f30f8d883a",
+      "science": "SCIENCE_HOLD",
+      "source_receipt_sha256": "e1c704cb9063ecdfddfc9a51e409cce98e015cfa1182540e7513638e6cc6437c",
+      "status": "SINGLE_INPUT_NUMERICAL_EQUIVALENCE_PASS",
+      "tolerance": {
+        "atol": 1e-12,
+        "integer_coordinates_and_times": "exact",
+        "rtol": 1e-12
+      }
+    },
+    "qualification_commit": "0c67e937ed7177cf391cf0ccf77d5f3893a5af97",
+    "science": "SCIENCE_HOLD",
+    "source_chemistry_sha256": "8e9c5e45f3c644c20baab66936fd3d9a495ab07b5facf06d795af08d6b8b3859",
+    "source_parent_artifact": 15240938520,
+    "source_parent_sha256": "7f221b51e81c39812bafa635e2f3e0fe6eeee8c0a9f8586bfd1b2ec2333fffce",
+    "status": "FLAT_ASSETS_NUMERICAL_EQUIVALENCE_PASS",
+    "actions_run_id": "46131743100"
+  }
 }
