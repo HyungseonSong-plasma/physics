@@ -3,7 +3,7 @@
 MOOSE Physics application for plasma and RF Maxwell coupling.
 
 - `app/`: application source and Makefile.
-- `assets/`: flat simulation inputs, parent/Maxwell meshes, chemistry and lookup data.
+- `assets/`: flat simulation inputs, one shared parent/Maxwell mesh, chemistry and lookup data.
 - `build-base/`: pinned dependency build recipe.
 - `tests/`: validation and work-contract checks.
 
@@ -18,6 +18,6 @@ cd ..
 ./app/physics-opt -i assets/input.i
 ```
 
-The demonstrated S6-417 research case uses `OXYGEN_RESEARCH_400=1`, `OXYGEN_RESEARCH_FULL24=0`, `OXYGEN_RESEARCH_EI2738_FORMULA=0`, and `OXYGEN_RESEARCH_QUICK_5MIN=0`. For bounded CI, the solver is limited to one parent step (1 ns). This is not long-time scientific validation. The prior original-mesh flat-layout parity and the separate conformal-mesh comparison are recorded in `IMPORT_MANIFEST.json`. The conformal mesh preserves the parent plasma coordinates and triangle connectivity; changing the mesh changes RF results, so exact numerical equivalence to the original mesh is not claimed.
+The demonstrated S6-417 research case uses `OXYGEN_RESEARCH_400=1`, `OXYGEN_RESEARCH_FULL24=0`, `OXYGEN_RESEARCH_EI2738_FORMULA=0`, and `OXYGEN_RESEARCH_QUICK_5MIN=0`. For bounded CI, the solver is limited to one parent step (1 ns). This is not long-time scientific validation. The prior original-mesh flat-layout parity and the separate conformal-mesh comparison are recorded in `IMPORT_MANIFEST.json`. The unified mesh preserves all eight Parent volume blocks and adds six Maxwell-only blocks. Parent retains only its eight blocks; Maxwell removes imported Parent sidesets and generates its own. The original detached axis lines are reconstructed on actual element edges. Native requalification is pending; changes in Maxwell discretization may change RF results.
 
 Imported historical checkers requiring excluded legacy tables or upstream-only contracts are outside this bounded acceptance. No `runtime-image/` directory is required or included.

@@ -35,11 +35,16 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
   rz_coord_axis = Y
   [base]
     type = FileMeshGenerator
-    file = 'maxwell.msh'
+    file = 'mesh.msh'
+  []
+  [remove_parent_boundaries]
+    type = BoundaryDeletionGenerator
+    input = base
+    boundary_names = 'axis inlet outlet plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring cover_outer_right wafer_electrode focus_ring_ground vacuum_outer_ground cover_vacuum cover_coil_ground vacuum_coil_ground'
   []
   [axis]
     type = ParsedGenerateSideset
-    input = base
+    input = remove_parent_boundaries
     combinatorial_geometry = 'abs(x) < 1e-12'
     normal = '-1 0 0'
     new_sideset_name = axis
