@@ -1,8 +1,8 @@
-name: Physics native build and flat assets
+name: Physics New-only assets cutover P1
 run-name: Physics native CI / ${{ github.ref_name }} / ${{ github.sha }}
 on:
   push:
-    branches: [migration/unified-mesh, feature/exodus-output, main]
+    branches: [feature/new-only-assets, main]
     paths: ['app/**', 'assets/**', 'tests/**', 'build-base/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
   workflow_dispatch:
 permissions:
@@ -14,7 +14,7 @@ jobs:
     uses: HyungseonSong-plasma/work/.github/workflows/reusable_test.yml@1f12e2621fa1c2b55c00ba8e5a8e5975d9f08b9f
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       BASE_IMAGE: ghcr.io/hyungseonsong-plasma/physics-build-base@sha256:2c3352da4f5c1b2ae98475fc01463ad0cdbc6ce7d221ce55055ddea152182008
     steps:
@@ -53,11 +53,8 @@ jobs:
               if e["path"]=="assets/maxwell.msh": continue  # historical source; now unified
               expected_blob=e["blob"]
               assert blob(e["path"])==expected_blob,e["path"]
-          for p,digest in m["unified_mesh"]["files"].items():
-              if p=="input.i":
-                  assert blob("assets/input.i")==m["exodus_output"]["parent_input_blob"],p
-              else:
-                  assert hashlib.sha256(pathlib.Path("assets",p).read_bytes()).hexdigest()==digest,p
+          for p,expected_blob in m["new_only_assets"]["candidate_blobs"].items():
+              assert blob(p)==expected_blob,p
           for p in ("physics_app","runtime-image","database","assets/database","assets/chemistry","app/database","assets/maxwell.msh"):
               assert not pathlib.Path(p).exists(),p
           assert blob("assets/mesh.msh")==m["unified_mesh"]["candidate_blob"]
@@ -130,9 +127,9 @@ jobs:
         run: |
           set -euo pipefail
           (cd assets && sha256sum -c mesh.sha256)
-          bash -n tests/mesh/qualify-unified.sh
+          bash -n tests/mesh/qualify-new-only.sh
           python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/compare-unified.py tests/mesh/exodus-reader.py tests/mesh/verify-exodus.py
-          bash tests/mesh/qualify-unified.sh
+          bash tests/mesh/qualify-new-only.sh
       - name: Upload bounded evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

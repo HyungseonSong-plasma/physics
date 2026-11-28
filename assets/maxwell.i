@@ -238,38 +238,6 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
 []
 
 [Kernels]
-  [E_real_diffusion]
-    type = Diffusion
-    variable = E_real
-  []
-  [E_imag_diffusion]
-    type = Diffusion
-    variable = E_imag
-  []
-  [E_real_reaction]
-    type = MatReaction
-    variable = E_real
-    reaction_rate = neg_a
-  []
-  [E_imag_reaction]
-    type = MatReaction
-    variable = E_imag
-    reaction_rate = neg_a
-  []
-  [E_real_sigma_coupling]
-    type = MatCoupledForce
-    variable = E_real
-    v = 'E_imag'
-    coef = '1'
-    material_properties = 'b'
-  []
-  [E_imag_sigma_coupling]
-    type = MatCoupledForce
-    variable = E_imag
-    v = 'E_real'
-    coef = '-1'
-    material_properties = 'b'
-  []
   [coil1_current]
     type = BodyForce
     variable = E_imag
@@ -293,32 +261,6 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
   []
 []
 
-[BCs]
-  [axis_real]
-    type = DirichletBC
-    variable = E_real
-    boundary = axis
-    value = 0
-  []
-  [axis_imag]
-    type = DirichletBC
-    variable = E_imag
-    boundary = axis
-    value = 0
-  []
-  [wall_real]
-    type = DirichletBC
-    variable = E_real
-    boundary = 'outer_right outer_bottom outer_top'
-    value = 0
-  []
-  [wall_imag]
-    type = DirichletBC
-    variable = E_imag
-    boundary = 'outer_right outer_bottom outer_top'
-    value = 0
-  []
-[]
 
 [Postprocessors]
   [E_real_l2]
@@ -381,5 +323,19 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
     order = CONSTANT
     block = plasma
     initial_condition = 1.3322
+  []
+[]
+# Action owns the six RF operators and zero-field boundaries.
+# Three coil-local BodyForce objects retain the live RF drive postprocessor.
+[Physics]
+  [Plasmas]
+    [Maxwell]
+      field_real = E_real
+      field_imag = E_imag
+      frequency_hz = ${frequency}
+      reaction_material = neg_a
+      coupling_material = b
+      ground_boundaries = 'axis outer_right outer_bottom outer_top'
+    []
   []
 []

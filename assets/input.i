@@ -213,30 +213,6 @@
     expression = '6.02214076e23*we'
     block = plasma
   []
-  [charge_number_density]
-    type = ADParsedFunctorMaterial
-    property_name = charge_number_density
-    functor_names = 'n_i_physical n_op_physical n_e_physical n_m_physical'
-    functor_symbols = 'ni nop ne nm'
-    expression = 'ni+nop-ne-nm'
-    block = plasma
-  []
-  [charge_density]
-    type = ADParsedFunctorMaterial
-    property_name = charge_density_C_m3
-    functor_names = 'charge_number_density'
-    functor_symbols = 'nq'
-    expression = '1.602176634e-19*nq'
-    block = plasma
-  []
-  [poisson_source]
-    type = ADParsedFunctorMaterial
-    property_name = poisson_source
-    functor_names = 'charge_number_density'
-    functor_symbols = 'nq'
-    expression = '1.8095128179727827e-08*nq'
-    block = plasma
-  []
 
   [neutral_flow_constants]
     type = ADGenericFunctorMaterial
@@ -875,36 +851,6 @@
 []
 
 [Materials]
-  [eps_plasma]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '1.0'
-    block = plasma
-  []
-  [eps_cover]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '3.6'
-    block = cover
-  []
-  [eps_wafer]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '12.5'
-    block = wafer
-  []
-  [eps_focus_ring]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '8.0'
-    block = focus_ring
-  []
-  [eps_vacuum]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '1.0'
-    block = 'vacuum coil1 coil2 coil3'
-  []
   [cover_surface_anchor]
     type = ADGenericConstantMaterial
     prop_names = 'cover_surface_anchor'
@@ -972,19 +918,6 @@
 []
 
 [Kernels]
-  [phi_diffusion]
-    type = ADMatDiffusion
-    variable = potential
-    diffusivity = relative_permittivity
-    block = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3'
-  []
-  [phi_source]
-    type = FunctorKernel
-    variable = potential
-    functor = poisson_source
-    functor_on_rhs = true
-    block = plasma
-  []
   [sigma_time]
     type = ADTimeDerivative
     variable = sigma_s
@@ -1222,30 +1155,6 @@
 []
 
 [BCs]
-  [grounded_potential]
-    type = DirichletBC
-    variable = potential
-    value = 0.0
-    boundary = 'inlet outlet plasma_electrode plasma_metal plasma_right cover_outer_right wafer_electrode focus_ring_ground vacuum_outer_ground cover_coil_ground vacuum_coil_ground'
-  []
-  [cover_surface_charge_poisson]
-    type = PhysicsADSurfaceChargePoissonBC
-    variable = potential
-    boundary = plasma_cover
-    surface_charge = sigma_s
-  []
-  [wafer_surface_charge_poisson]
-    type = PhysicsADSurfaceChargePoissonBC
-    variable = potential
-    boundary = plasma_wafer
-    surface_charge = sigma_wafer
-  []
-  [focus_ring_surface_charge_poisson]
-    type = PhysicsADSurfaceChargePoissonBC
-    variable = potential
-    boundary = plasma_focus_ring
-    surface_charge = sigma_focus_ring
-  []
 []
 
 [FVBCs]
@@ -2466,6 +2375,9 @@ faraday_t6 = 96485.33212331001
     pressure = 1.333223684
     temperature = 300
     state_model = ideal_gas
+    [Poisson]
+      fem_potential = potential
+    []
     # Shared FEM-potential gradient evaluation for every C2 FV ion wall.
     wall_gradient = adjacent_element
     [Transport]
