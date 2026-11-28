@@ -1,0 +1,175 @@
+{
+  "parentPlasmaNodes": 1007,
+  "parentPlasmaTriangles": 1798,
+  "oldChildNodes": 2050,
+  "newChildNodes": 1819,
+  "oldChildTriangles": 3951,
+  "newChildTriangles": 3494,
+  "originalExteriorTriangles": 1603,
+  "unchangedExteriorTriangles": 1406,
+  "removedInterfaceVertices": 91,
+  "insertedInterfaceVertices": 184,
+  "interfaceCounts": {
+    "external": 18,
+    "right": 61,
+    "wafer": 27,
+    "bottom": 23,
+    "port": 9,
+    "cover": 53,
+    "metal": 20,
+    "electrode": 2,
+    "focus_ring": 1
+  },
+  "hanging": 0,
+  "duplicates": 0,
+  "nonmanifold": 0,
+  "exactParentCoordinateConnectivity": true,
+  "flips": 1506,
+  "before": {
+    "top": {
+      "triangles": 163,
+      "area": 0.006135750000000004,
+      "minQuality": 0.8123595790334076
+    },
+    "plasma": {
+      "triangles": 2348,
+      "area": 0.061235999999999985,
+      "minQuality": 0.6592307870224806
+    },
+    "wafer": {
+      "triangles": 46,
+      "area": 0.0012149999999999995,
+      "minQuality": 0.7582518744096693
+    },
+    "electrode": {
+      "triangles": 281,
+      "area": 0.010084500000000008,
+      "minQuality": 0.6545029885025654
+    },
+    "focus_ring": {
+      "triangles": 20,
+      "area": 0.00018224999999999795,
+      "minQuality": 0.38988216046535334
+    },
+    "coil3": {
+      "triangles": 8,
+      "area": 0.00016199999999999928,
+      "minQuality": 0.866025403783915
+    },
+    "coil2": {
+      "triangles": 8,
+      "area": 0.00016199999999999955,
+      "minQuality": 0.8660254037839138
+    },
+    "coil1": {
+      "triangles": 8,
+      "area": 0.00016199999999999966,
+      "minQuality": 0.8660254037839138
+    },
+    "cover": {
+      "triangles": 182,
+      "area": 0.005467500000000006,
+      "minQuality": 0.6604565844103765
+    },
+    "vacuum": {
+      "triangles": 581,
+      "area": 0.021383999999999997,
+      "minQuality": 0.854287610072465
+    },
+    "metal": {
+      "triangles": 20,
+      "area": 0.0001822500000000002,
+      "minQuality": 0.38988216046535773
+    },
+    "right": {
+      "triangles": 145,
+      "area": 0.004252500000000002,
+      "minQuality": 0.7333763174471193
+    },
+    "bottom": {
+      "triangles": 126,
+      "area": 0.004616999999999999,
+      "minQuality": 0.7087558724225214
+    },
+    "port": {
+      "triangles": 15,
+      "area": 0.0001822500000000003,
+      "minQuality": 0.3657652509110187
+    }
+  },
+  "after": {
+    "top": {
+      "triangles": 163,
+      "area": 0.006135750000000004,
+      "minQuality": 0.8123595790334076
+    },
+    "wafer": {
+      "triangles": 56,
+      "area": 0.0012149999999999995,
+      "minQuality": 0.5945035065730201
+    },
+    "electrode": {
+      "triangles": 282,
+      "area": 0.010084500000000008,
+      "minQuality": 0.6545029885025654
+    },
+    "focus_ring": {
+      "triangles": 20,
+      "area": 0.00018224999999999795,
+      "minQuality": 0.38988216046535334
+    },
+    "coil3": {
+      "triangles": 8,
+      "area": 0.00016199999999999928,
+      "minQuality": 0.866025403783915
+    },
+    "coil2": {
+      "triangles": 8,
+      "area": 0.00016199999999999955,
+      "minQuality": 0.8660254037839138
+    },
+    "coil1": {
+      "triangles": 8,
+      "area": 0.00016199999999999966,
+      "minQuality": 0.8660254037839138
+    },
+    "cover": {
+      "triangles": 207,
+      "area": 0.005467500000000005,
+      "minQuality": 0.5587285899975634
+    },
+    "vacuum": {
+      "triangles": 581,
+      "area": 0.021383999999999997,
+      "minQuality": 0.854287610072465
+    },
+    "right": {
+      "triangles": 177,
+      "area": 0.004252500000000004,
+      "minQuality": 0.6254350602632105
+    },
+    "bottom": {
+      "triangles": 139,
+      "area": 0.004617000000000001,
+      "minQuality": 0.5645743918769298
+    },
+    "port": {
+      "triangles": 18,
+      "area": 0.00018225000000000028,
+      "minQuality": 0.3022490116751013
+    },
+    "metal": {
+      "triangles": 29,
+      "area": 0.00018225000000000015,
+      "minQuality": 0.48428672768871733
+    },
+    "plasma": {
+      "triangles": 1798,
+      "area": 0.06123600000000004,
+      "minQuality": 0.5147321555252024
+    }
+  },
+  "sourceParentBlob": "1674286d95b5031651c74c0ff38667626d5549f5",
+  "sourceMaxwellBlob": "28ff31220904ff81f426d0c2ed8dd18a7fd40b9e",
+  "candidateBlob": "da8af4354d7cef5552bc7efccf3baf0da7d564bd"
+}

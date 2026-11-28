@@ -1,0 +1,232 @@
+#pragma once
+
+#include "PlasmaInterface.h"
+#include "Action.h"
+
+#include <map>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <vector>
+
+namespace Plasma
+{
+
+struct DDTransportRecord
+{
+  std::string model;
+  double mobility = 0.0;
+  double diffusivity = 0.0;
+  std::string mobility_source;
+  std::string diffusivity_source;
+  std::string table_file;
+  std::string table_units;
+  std::string pressure;
+  std::string gas_temperature;
+  std::string bounds_policy = "error";
+  // New object-shaped transport requires [Plasmas] pressure/temperature, not
+  // per-species gas Functor name overrides. Legacy flat files remain readable.
+  bool root_owned_gas = false;
+
+  bool equals(const DDTransportRecord & rhs) const;
+};
+
+struct NVTransportRecord
+{
+  std::string transport_data_file;
+  std::string temperature;
+  std::string pressure;
+  std::string electron_temperature;
+  std::string electron_number_density;
+  std::vector<std::string> species;
+  std::vector<std::string> mass_fractions;
+
+  bool equals(const NVTransportRecord & rhs) const;
+};
+
+// The C2 wall law parameters belong to JSON; fvm_species remains the only
+// discretization/generation selector. Do not use neutral-mixture molar mass
+// for this independent ion wall loss law.
+struct IonWallRecord
+{
+  // JSON species.wall_* owns only physical wall-law parameters. Density and
+  // mobility names are derived from the selected species, potential/block
+  // come from Continuity and gas temperature from [Plasmas]/temperature.
+  double molar_mass = 0.0;
+  double sticking = 1.0;
+  double ion_temperature_eV = 0.0;
+  bool use_element_gradient_for_potential = true;
+};
+
+// One explicitly declared mesh sideset and its typed boundary owner.
+// Aliases such as wafer and inlet are labels, not inferred mesh names.
+// A verbatim supported MOOSE BC declaration moved from an existing .i
+// [BCs] block. Its name, type, variable, and material Functor links are
+// retained, with the mesh boundary supplied by its enclosing JSON record.
+struct BoundaryBCRecord
+{
+  std::string type;
+  std::string variable;
+  std::string wall_number_flux;
+  std::string mean_energy;
+  // The two FV ion forms deliberately use different sign/unit contracts.
+  std::string functor;
+  std::string signed_number_flux;
+  double factor = 0.0;
+  // The enclosing normalized BoundaryRecord owns all physical mesh sides.
+};
+
+struct BoundaryRecord
+{
+  // A single existing BC may own multiple mesh sidesets. Never split that
+  // original operator into separate objects during JSON relocation.
+  std::vector<std::string> mesh_boundaries;
+  std::map<std::string, BoundaryBCRecord> bcs;
+};
+
+struct SpeciesRecord
+{
+  std::map<std::string, int> elements;
+  int charge_number = 0;
+  // Common executable-run species metadata (even for e and neutrals).
+  // temperature_eV is k_B*T [eV], not a new independent energy PDE.
+  // 0 eV for a wall ion retains the existing gas-temperature fallback.
+  double molar_mass = 0.0;
+  std::optional<double> temperature_eV;
+  double sticking_coefficient = 0.0;
+  // Needed only for rate laws evaluated from heavy-species mass fractions.
+  double molar_mass_kg_mol = 0.0;
+  // Initial number density [1/m^3] is required for every species selected
+  // by FEM/FVM DDContinuityEq and exclusively owns its generated variable/IC.
+  // Other species may omit it. Strictly positive (log-state cannot encode zero).
+  // No external [Variables]/[ICs] fallback for selected continuity species.
+  std::optional<double> initial_number_density;
+  std::optional<IonWallRecord> ion_wall;
+  // Scenario-specific initial data, never the instantaneous solver state.
+  // Missing is different from an explicitly zero concentration.
+  std::optional<double> initial_vol_mass_fraction;
+  std::optional<double> initial_inlet_mass_fraction;
+  // A live Y_i(t,x) owner is mandatory for root ideal_gas: either a solver
+  // mass-fraction variable, or a derived (constraint) Functor. These are
+  // NOT sources of initial or inlet values.
+  std::string mass_fraction_variable;
+  std::string mass_fraction_functor;
+};
+
+// Validated executable rate law. Empty model means the reaction progress
+// is still provided independently by a historical input. An explicit lookup
+// is generated exclusively by the Chemistry Action.
+struct RateRecord
+{
+  std::string model;
+  std::string basis;
+  // Strict EI lookup: table path resolved relative to the declaring JSON,
+  // neutral target derived from validated stoichiometry (never user override).
+  std::string table_file;
+  std::string lookup_target;
+  double A_input = 0.0;
+  double A_molar = 0.0;
+  double T_ref = 300.0;
+  double exponent = 0.0;
+  double sticking = 0.0;
+};
+
+struct ReactionRecord
+{
+  std::string id;
+  std::string equation;
+  std::map<std::string, int> reactants;
+  std::map<std::string, int> products;
+  std::string progress;
+  std::string domain = "volume";
+  RateRecord rate;
+  // Positive energy_loss_eV removes electron energy (one minus sign at RHS).
+  // A functor is an alternative positive-loss magnitude in eV/event.
+  double energy_loss_eV = 0;
+  std::string energy_loss_functor;
+  bool contributes_electron_energy = false;
+
+  int net(const std::string & species) const;
+};
+
+// G1: parsed opt-in Poisson settings. No Material, Kernel or BC is generated
+// until the independently reviewed Poisson Physics cutover (G4).
+struct PoissonRecord
+{
+  std::map<std::string, double> relative_permittivity;
+  std::vector<std::string> ground_boundaries;
+  std::map<std::string, std::string> surface_charge;
+};
+
+/** Immutable validated, shared plasma species and chemistry input contract. */
+class ChemistryData
+{
+public:
+  ChemistryData() = default;
+  explicit ChemistryData(const std::vector<std::string> & files,
+                         const std::map<std::string, SpeciesRecord> & input_species = {});
+  bool inputOwnsSpecies(const std::string & id) const { return _input_species.count(id) != 0; }
+
+  const SpeciesRecord & species(const std::string & id) const;
+  const std::map<std::string, SpeciesRecord> & speciesRecords() const { return _species; }
+  const std::vector<ReactionRecord> & reactions() const { return _reactions; }
+  bool hasSpeciesSource(const std::string & id) const;
+  bool hasElectronEnergySource() const;
+  const DDTransportRecord * ddTransport(const std::string & id) const;
+  bool hasDDTransport() const { return !_dd_transport.empty(); }
+  bool fluidElectronEnergyTransport() const { return _fluid_electron_energy_transport; }
+  const NVTransportRecord * nvTransport() const;
+  bool hasBoundaries() const { return _has_boundaries; }
+  bool hasIonWalls() const;
+  const PoissonRecord * poisson() const { return _poisson ? &*_poisson : nullptr; }
+  const std::string & surfaceElectronWallFlux() const { return _surface_electron_wall_flux; }
+  const std::map<std::string, BoundaryRecord> & boundaries() const
+  {
+    return _boundaries;
+  }
+  // Scenario-specific heavy-species composition is stored directly in speciesRecords().
+
+private:
+  std::map<std::string, SpeciesRecord> _species;
+  std::set<std::string> _input_species;
+  std::vector<ReactionRecord> _reactions;
+  std::map<std::string, DDTransportRecord> _dd_transport;
+  bool _fluid_electron_energy_transport = false;
+  std::unique_ptr<NVTransportRecord> _nv_transport;
+  bool _has_boundaries = false;
+  std::map<std::string, BoundaryRecord> _boundaries;
+  std::optional<PoissonRecord> _poisson;
+  std::string _surface_electron_wall_flux;
+};
+
+// Chemistry owns the Physics source projector and the validated JSON data model.
+class Chemistry : public PlasmaInterface
+{
+public:
+  static InputParameters validParams();
+  explicit Chemistry(const InputParameters & parameters);
+
+private:
+  void checkIntegrity() const override;
+  void addFunctorMaterials() override;
+};
+
+} // namespace Plasma
+
+/** Root [Plasmas] Action; one validated mechanism owner shared by child Physics. */
+class PlasmasAction : public Action
+{
+public:
+  static InputParameters validParams();
+  explicit PlasmasAction(const InputParameters & params);
+  void act() override;
+
+  bool gasStateEnabled() const { return isParamValid("pressure") && isParamValid("temperature"); }
+
+  const Plasma::ChemistryData & data() const;
+
+private:
+  // Resolve once after all child Action parameters have been registered.
+  mutable std::unique_ptr<const Plasma::ChemistryData> _mechanism;
+};
