@@ -229,18 +229,6 @@
 
 
 
-  [neutral_transport]
-    type = NVTransportMaterial
-    temperature = temperature
-    pressure = pressure
-    transport_data_file = 'neutral_transport.txt'
-    species = 'O2 O2s O Os'
-    mass_fractions = 'w_O2_constraint w_O2s w_O w_Os'
-    D_mix_names = 'D_mix_O2 D_mix_O2s D_mix_O D_mix_Os'
-    D_T_names = 'D_T_O2 D_T_O2s D_T_O D_T_Os'
-    kT_names = 'kT_O2 kT_O2s kT_O kT_Os'
-    block = plasma
-  []
   [ei02_o2_concentration]
     type = ADParsedFunctorMaterial
     property_name = c_O2_EI02
@@ -2285,6 +2273,10 @@ faraday_t6 = 96485.33212331001
     # Shared FEM-potential gradient evaluation for every C2 FV ion wall.
     wall_gradient = adjacent_element
     [Transport]
+      [NavierStokes]
+        block = plasma
+        neutral_collision_file = 'neutral_transport_aliases.txt'
+      []
       [Chemistry]
         block = plasma
       []

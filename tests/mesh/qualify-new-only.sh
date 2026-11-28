@@ -66,6 +66,32 @@ set -e
 test "$rc" -ne 0 && test "$rc" -ne 124
 grep -q "Invalid solved neutral mixture" "$ev/neutral-negative.log"
 echo SOLVED_NEUTRAL_NEGATIVE_PASS
+# Exact projection: only species metadata mass columns and explanatory comments change.
+python3 - <<'PY'
+from pathlib import Path
+def rows(path):
+    return [l.split() for l in Path(path).read_text().splitlines() if l.strip() and not l.lstrip().startswith("#")]
+old=rows("assets/neutral_transport.txt")
+new=rows("assets/neutral_transport_aliases.txt")
+assert len(old)==len(new)
+for a,b in zip(old,new):
+    assert b==([a[0],a[1],a[3]] if a[0]=="species" else a),(a,b)
+print("NV_COLLISION_ALIAS_PROJECTION_PASS")
+PY
+badnv="$RUNNER_TEMP/flat-nv-negative"
+mkdir "$badnv"; cp -a assets "$badnv/assets"
+sed -i "s/neutral_collision_file = 'neutral_transport_aliases.txt'/neutral_collision_file = 'neutral_transport.txt'/" "$badnv/assets/input.i"
+set +e
+timeout 480 docker run --rm "${opts[@]}" -v "$badnv:/case" "$BASE_IMAGE" -lc '
+  source /environment
+  export LD_LIBRARY_PATH=/workspace/app/test/lib:/workspace/app/lib:${LD_LIBRARY_PATH:-}
+  exec /workspace/app/physics-opt "$@"
+' physics-opt --check-input -i assets/input.i >"$ev/nv-negative.log" 2>&1
+rc=$?
+set -e
+test "$rc" -ne 0 && test "$rc" -ne 124
+grep -q "External molar masses require alias-only species rows" "$ev/nv-negative.log"
+echo NV_TRANSPORT_NEGATIVE_PASS
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
 if test "${#kinds[@]}" -eq 2; then
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/compare-unified.py /evidence'

@@ -1,5 +1,6 @@
 #include "NVTransport.h"
 #include "Chemistry.h"
+#include "ActionWarehouse.h"
 #include "FEProblemBase.h"
 
 #include <cmath>
@@ -21,6 +22,8 @@ NVTransport::validParams()
   params.addParam<std::vector<std::string>>(
       "species_molar_mass", "Named neutral masses (species:kg/mol); exact coverage of the "
                             "active mixture, no JSON or database mass owner.");
+  params.addParam<FileName>("neutral_collision_file",
+      "Alias-only neutral collision table; reuse the solved-mixture root catalogue.");
   return params;
 }
 
@@ -32,6 +35,51 @@ NVTransport::NVTransport(const InputParameters & parameters)
 void
 NVTransport::addFunctorMaterials()
 {
+  // The solved-pressure neutral catalogue already owns masses and live
+  // fraction names. Do not introduce a second JSON species/mass owner.
+  if (isParamValid("neutral_collision_file"))
+  {
+    const auto roots = _awh.getActions<PlasmasAction>();
+    if (roots.size() != 1 || !roots.front()->isParamValid("neutral_species") ||
+        !rootGasStateEnabled() || !getProblem().hasVariable("pressure"))
+      paramError("neutral_collision_file", "Requires the solved neutral root catalogue.");
+    if (isParamValid("species_molar_mass") || chemistryData().nvTransport())
+      paramError("neutral_collision_file", "Duplicate neutral transport catalogue.");
+    const auto & root = *roots.front();
+    const auto & ids = root.getParam<std::vector<std::string>>("neutral_species");
+    const auto & masses = root.getParam<std::vector<Real>>("neutral_molar_masses");
+    const auto & names = root.getParam<std::vector<std::string>>("neutral_fraction_names");
+    const auto & blocks = root.getParam<std::vector<SubdomainName>>("neutral_blocks");
+    if (ids.size() < 2 || masses.size() != ids.size() || names.size() != ids.size() ||
+        std::set<SubdomainName>(_blocks.begin(), _blocks.end()) !=
+        std::set<SubdomainName>(blocks.begin(), blocks.end()))
+      paramError("neutral_collision_file", "Neutral transport must match root catalogue and blocks.");
+    auto p = getFactory().getValidParams("NVTransportMaterial");
+    p.set<FileName>("transport_data_file") = getParam<FileName>("neutral_collision_file");
+    p.set<MooseFunctorName>("temperature") = "temperature";
+    p.set<MooseFunctorName>("pressure") = "pressure";
+    p.set<std::vector<std::string>>("species") = ids;
+    p.set<std::vector<Real>>("molar_masses") = masses;
+    p.set<std::vector<MooseFunctorName>>("mass_fractions") =
+        std::vector<MooseFunctorName>(names.begin(), names.end());
+    assignBlocks(p, _blocks);
+    getProblem().addFunctorMaterial("NVTransportMaterial", name() + "_mixture_transport_coefficients", p);
+    for (std::size_t k = 0; k < ids.size(); ++k)
+    {
+      auto concentration = getFactory().getValidParams("ADParsedFunctorMaterial");
+      concentration.set<std::string>("property_name") = "c_" + ids[k] + "_molar";
+      concentration.set<std::vector<std::string>>("functor_names") = {"rho_neutral", names[k]};
+      concentration.set<std::vector<std::string>>("functor_symbols") = {"rho", "Y"};
+      std::ostringstream expression;
+      expression << std::setprecision(17) << "rho*Y/" << masses[k];
+      concentration.set<std::string>("expression") = expression.str();
+      assignBlocks(concentration, _blocks);
+      getProblem().addFunctorMaterial("ADParsedFunctorMaterial",
+          name() + "_" + ids[k] + "_molar_concentration", concentration);
+    }
+    return;
+  }
+
   const auto * config = chemistryData().nvTransport();
   if (!config)
     mooseError("Activated [Transport]/[NavierStokes] requires "

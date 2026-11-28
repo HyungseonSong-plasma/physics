@@ -1249,7 +1249,7 @@
       "source_path": "physics_app/src/physics/plasma/NVTransport.C",
       "path": "app/src/physics/plasma/NVTransport.C",
       "mode": "100644",
-      "blob": "063ed007aa70f6d3e63b9124071b37fd306129ab"
+      "blob": "dfd2c21a8809e674387879fec7f15d230c05405a"
     },
     {
       "source_path": "physics_app/src/physics/plasma/PlasmaInterface.C",
@@ -1491,13 +1491,14 @@
   },
   "new_only_assets": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "stage": "P2_CANDIDATE_SOLVED_NEUTRAL_SCCM_EOS",
+    "stage": "P3_CANDIDATE_NV_TRANSPORT_ACTION",
     "candidate_blobs": {
-      "assets/input.i": "31acf6066ef3ee5adff6ed4fb83c905afeab0cba",
+      "assets/input.i": "c029685fa8e6b6d07f35647fb4f0db83bb05e1d1",
       "assets/maxwell.i": "c317fbbb7a55eee52a22e65db7e6349c54f0cebd",
-      "assets/chemistry.json": "9cfdfa2286dae1c4d1a6cb5bd85fb8b086b1f010"
+      "assets/chemistry.json": "9cfdfa2286dae1c4d1a6cb5bd85fb8b086b1f010",
+      "assets/neutral_transport_aliases.txt": "98075edf56cbe7d3b5e96c531efe74277ffc0a37"
     },
-    "retained": "Native NVTransportMaterial and neutral PDE/BC objects, EI/elastic, RF coil source; full cutover pending #11",
+    "retained": "Native neutral PDE/BC, EI/elastic and RF coil source; temporary original collision table for historical A/B",
     "science": "SCIENCE_HOLD",
     "source_delta": [
       {
@@ -1505,7 +1506,18 @@
         "import_blob": "5815f9bc6c1d25c01ff0783a9ee2115d51565859",
         "candidate_blob": "b11a022ea149b63610cfafb3f770bbbcfaddab8e",
         "reason": "Solved neutral mixture and SCCM owner; preserve historical lane and exact legacy EOS constant."
+      },
+      {
+        "path": "app/src/physics/plasma/NVTransport.C",
+        "import_blob": "063ed007aa70f6d3e63b9124071b37fd306129ab",
+        "candidate_blob": "dfd2c21a8809e674387879fec7f15d230c05405a",
+        "reason": "Reuse solved neutral catalogue for NVTransport; publish live concentrations."
       }
-    ]
+    ],
+    "alias_projection": {
+      "source_blob": "751bfd5fc32887f1a3ea6e9da771aeb3bb732363",
+      "derived_blob": "98075edf56cbe7d3b5e96c531efe74277ffc0a37",
+      "policy": "Only remove species mass column, no collision data change; original retained for legacy A/B until retirement."
+    }
   }
 }
