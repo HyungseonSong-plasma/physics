@@ -1,8 +1,8 @@
-name: Physics native build and flat assets
+name: Physics separate conformal meshes 100us
 run-name: Physics native CI / ${{ github.ref_name }} / ${{ github.sha }}
 on:
   push:
-    branches: [migration/unified-mesh, feature/exodus-output, main]
+    branches: [test/separate-mesh-100us]
     paths: ['app/**', 'assets/**', 'tests/**', 'build-base/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
   workflow_dispatch:
 permissions:
@@ -14,7 +14,7 @@ jobs:
     uses: HyungseonSong-plasma/work/.github/workflows/reusable_test.yml@1f12e2621fa1c2b55c00ba8e5a8e5975d9f08b9f
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 355
     env:
       BASE_IMAGE: ghcr.io/hyungseonsong-plasma/physics-build-base@sha256:2c3352da4f5c1b2ae98475fc01463ad0cdbc6ce7d221ce55055ddea152182008
     steps:
@@ -125,26 +125,65 @@ jobs:
               echo PHYSICS_NATIVE_BUILD_AND_SMOKE_PASS
               date -u
             '
-      - name: Verify flat inputs with native binary
+      - name: Stage pinned separate conformal meshes and run 400 W to 100us
         shell: bash
         run: |
           set -euo pipefail
-          (cd assets && sha256sum -c mesh.sha256)
-          bash -n tests/mesh/qualify-unified.sh
-          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/compare-unified.py tests/mesh/exodus-reader.py tests/mesh/verify-exodus.py
-          bash tests/mesh/qualify-unified.sh
-      - name: Upload bounded evidence
+          ev="$RUNNER_TEMP/physics-evidence"
+          case_dir="$RUNNER_TEMP/separate-case"
+          mkdir -p "$case_dir" "$ev/fields"
+          cp -a assets "$case_dir/assets"
+          old=95949734dc6954108d87deb5ed6e2f750bd990b7
+          for file in mesh.msh maxwell.msh input.i maxwell.i; do
+            git show "$old:assets/$file" > "$case_dir/assets/$file"
+          done
+          test "$(git hash-object "$case_dir/assets/mesh.msh")" = 1674286d95b5031651c74c0ff38667626d5549f5
+          test "$(git hash-object "$case_dir/assets/maxwell.msh")" = da8af4354d7cef5552bc7efccf3baf0da7d564bd
+          grep -Fq "end_time = 1e-4" "$case_dir/assets/input.i"
+          grep -Fq "target = 400" "$case_dir/assets/input.i"
+          grep -Fq "cli_args = 'Outputs/exodus=false;Outputs/csv=false'" "$case_dir/assets/input.i"
+          sed -i "s/Outputs\/exodus=false;Outputs\/csv=false/Outputs\/exodus=true;Outputs\/csv=false/" "$case_dir/assets/input.i"
+          { echo "separate conformal source=$old"; git rev-parse HEAD; (cd "$case_dir/assets" && sha256sum mesh.msh maxwell.msh input.i maxwell.i chemistry.json); } | tee "$ev/case-provenance.txt"
+          opts=(--network none --workdir /case --entrypoint /bin/bash --user 0:0
+            --env OXYGEN_RESEARCH_400=1 --env OXYGEN_RESEARCH_FULL24=0 --env OXYGEN_RESEARCH_EI2738_FORMULA=0 --env OXYGEN_RESEARCH_QUICK_5MIN=0
+            --mount "type=bind,src=$PWD,dst=/workspace,readonly" -v "$case_dir:/case" -v "$ev:/evidence")
+          args=(-i assets/input.i Executioner/end_time=1e-4 Outputs/file_base=/evidence/fields/parent Outputs/exodus=true Outputs/csv=true Outputs/time_step_interval=1 'Outputs/execute_on=INITIAL TIMESTEP_END' Outputs/checkpoint=false)
+          timeout 480 docker run --rm "${opts[@]}" "$BASE_IMAGE" -lc '
+            set -euo pipefail
+            source /environment
+            export LD_LIBRARY_PATH=/workspace/app/test/lib:/workspace/app/lib:${LD_LIBRARY_PATH:-}
+            exec /workspace/app/physics-opt --check-input "$@"
+          ' physics-opt "${args[@]}" 2>&1 | tee "$ev/separate-check-input.log"
+          grep -q 'Syntax OK' "$ev/separate-check-input.log"
+          timeout 17400 docker run --rm "${opts[@]}" "$BASE_IMAGE" -lc '
+            set -euo pipefail
+            source /environment
+            export LD_LIBRARY_PATH=/workspace/app/test/lib:/workspace/app/lib:${LD_LIBRARY_PATH:-}
+            exec /workspace/app/physics-opt "$@"
+          ' physics-opt "${args[@]}" 2>&1 | tee "$ev/separate-100us.log"
+          docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$PWD/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc '
+            source /environment
+            python3 - <<'"'"'PY'"'"'
+          import sys, json, pathlib
+          sys.path.insert(0, "/scripts")
+          from importlib import import_module
+          v = import_module("verify-flat")
+          p = pathlib.Path("/evidence/fields")
+          target = 1e-4
+          children = sorted(p.glob("parent*maxwell_t6*.e"))
+          assert children, "Maxwell Exodus missing"
+          result = dict(endpoint_s=target, density_extrema=v.endpoint(p/"parent.csv", target),
+                        spatial_log_field_counts=v.exodus(p/"parent.e", target),
+                        maxwell_files=[x.name for x in children], science="SCIENCE_HOLD")
+          (p/"manifest.json").write_text(json.dumps(result, indent=2)+"\n")
+          print(json.dumps(result))
+          PY
+          '
+      - name: Upload separate mesh evidence and available results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: physics-flat-assets-evidence
+          name: physics-separate-mesh-400W-100us
           path: ${{ runner.temp }}/physics-evidence/
           if-no-files-found: warn
-          retention-days: 30
-      - name: Upload verified Exodus results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: physics-exodus
-          path: ${{ runner.temp }}/physics-exodus/
-          if-no-files-found: error
           retention-days: 30
