@@ -2,7 +2,7 @@ name: Physics native build and flat assets
 run-name: Physics native CI / ${{ github.ref_name }} / ${{ github.sha }}
 on:
   push:
-    branches: [migration/unified-mesh, feature/exodus-output, main]
+    branches: [feature/parent-exodus, main]
     paths: ['app/**', 'assets/**', 'tests/**', 'build-base/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
   workflow_dispatch:
 permissions:
@@ -55,7 +55,7 @@ jobs:
               assert blob(e["path"])==expected_blob,e["path"]
           for p,digest in m["unified_mesh"]["files"].items():
               if p=="input.i":
-                  assert blob("assets/input.i")==m["exodus_output"]["parent_input_blob"],p
+                  assert blob("assets/input.i")==m["parent_exodus"]["parent_input_blob"],p
               else:
                   assert hashlib.sha256(pathlib.Path("assets",p).read_bytes()).hexdigest()==digest,p
           for p in ("physics_app","runtime-image","database","assets/database","assets/chemistry","app/database","assets/maxwell.msh"):
@@ -130,9 +130,9 @@ jobs:
         run: |
           set -euo pipefail
           (cd assets && sha256sum -c mesh.sha256)
-          bash -n tests/mesh/qualify-unified.sh
-          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/compare-unified.py tests/mesh/exodus-reader.py tests/mesh/verify-exodus.py
-          bash tests/mesh/qualify-unified.sh
+          bash -n tests/mesh/qualify-parent-exodus.sh
+          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/exodus-reader.py tests/mesh/verify-parent-exodus.py
+          bash tests/mesh/qualify-parent-exodus.sh
       - name: Upload bounded evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

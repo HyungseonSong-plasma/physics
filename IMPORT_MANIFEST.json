@@ -1488,5 +1488,13 @@
     "validated_mesh_run": 46136191787,
     "parent_input_blob": "beb0c7225c9871d373ca0af7fc0ea4db51b4d3cf",
     "scope": "Enable Maxwell Exodus only; retain default MultiApp-qualified file base and latest steady solve output; Parent transient history unchanged."
+  },
+  "parent_exodus": {
+    "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
+    "parent_input_blob": "330f8447102e0bda53c9dfa7a9fa3fcacf957eba",
+    "mesh_unchanged": true,
+    "mode": "Parent full 14 volume blocks plus 3 lower-dimensional surface blocks; dedicated visualization-only RF auxiliary variables; child output disabled",
+    "status": "PENDING_NATIVE_PARITY_AND_OUTPUT_VALIDATION",
+    "time_semantics": "INITIAL RF values are unsolved initial state; each accepted parent endpoint carries latest TIMESTEP_BEGIN steady RF solve."
   }
 }

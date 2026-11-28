@@ -11,18 +11,12 @@
     type = FileMeshGenerator
     file = 'mesh.msh'
   []
-  [parent_blocks]
-    type = BlockDeletionGenerator
-    input = main
-    operation = keep
-    block = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3'
-  []
   [plasma_cover_owner]
     type = SideSetsBetweenSubdomainsGenerator
     primary_block = plasma
     paired_block = cover
     new_boundary = plasma_cover_owner
-    input = parent_blocks
+    input = main
   []
   [plasma_wafer_owner]
     type = SideSetsBetweenSubdomainsGenerator
@@ -2291,12 +2285,29 @@
   checkpoint = true
   csv = true
   exodus = true
+  file_base = physics
   execute_on = 'INITIAL TIMESTEP_END'
 []
 rf_scale_t6 = 1.0
 source_enable_t6 = 1.0
 faraday_t6 = 96485.33212331001
 [AuxVariables]
+  # Output-only fields: never consumed by the plasma equations.
+  [E_real_full]
+    family = LAGRANGE
+    order = FIRST
+    block = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+  []
+  [E_imag_full]
+    family = LAGRANGE
+    order = FIRST
+    block = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+  []
+  [rf_absorbed_power_density]
+    family = MONOMIAL
+    order = CONSTANT
+    block = plasma
+  []
   [E_real_rf_t6]
     family = LAGRANGE
     order = FIRST
@@ -2334,6 +2345,13 @@ faraday_t6 = 96485.33212331001
   []
 []
 [AuxKernels]
+  [rf_absorbed_power_density_output]
+    type = MaterialRealAux
+    variable = rf_absorbed_power_density
+    property = q_rf_raw_t6
+    block = plasma
+    execute_on = 'INITIAL TIMESTEP_END'
+  []
   [freeze_log_ne_t6]
     type = ParsedAux
     variable = log_ne_rf_state_t6
@@ -2379,12 +2397,32 @@ faraday_t6 = 96485.33212331001
   [maxwell_t6]
     type = FullSolveMultiApp
     input_files = 'maxwell.i'
-    cli_args = 'Outputs/exodus=true;Outputs/csv=false'
+    cli_args = 'Outputs/exodus=false;Outputs/csv=false'
     execute_on = TIMESTEP_BEGIN
     no_restore = true
   []
 []
 [Transfers]
+  [E_real_full_from_maxwell]
+    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    from_multi_app = maxwell_t6
+    source_variable = E_real
+    variable = E_real_full
+    from_blocks = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+    to_blocks = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+    error_on_miss = true
+    execute_on = SAME_AS_MULTIAPP
+  []
+  [E_imag_full_from_maxwell]
+    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    from_multi_app = maxwell_t6
+    source_variable = E_imag
+    variable = E_imag_full
+    from_blocks = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+    to_blocks = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+    error_on_miss = true
+    execute_on = SAME_AS_MULTIAPP
+  []
   [drive_to_maxwell_t6]
     type = MultiAppPostprocessorTransfer
     to_multi_app = maxwell_t6
