@@ -2,7 +2,7 @@ name: RDC P7 S6-417 baseline and trace
 on:
   push:
     branches: [test/rdc-p7-417]
-    paths: ['.github/workflows/rdc-p7-417.yml', 'runtime-image/rdc-p7-trace.py', 'runtime-image/rdc-p7-run.sh', 'runtime-image/rdc-p7-collection.py', 'assets/mesh.msh', 'assets/mesh.sha256']
+    paths: ['.github/workflows/rdc-p7-417.yml', 'runtime-image/rdc-p7-trace.py', 'runtime-image/rdc-p7-run.sh', 'runtime-image/rdc-p7-collection.py', 'assets/mesh.msh', 'assets/mesh.sha256', 'runtime-image/rdc-p7-single-input.sh', 'runtime-image/rdc-p7-compare.py']
 permissions:
   contents: read
   actions: read
@@ -25,7 +25,8 @@ jobs:
         run: |
           set -euo pipefail
           bash -n runtime-image/rdc-p7-run.sh
-          PYTHONPYCACHEPREFIX="$RUNNER_TEMP/rdc-p7-pycache" python3 -m py_compile runtime-image/rdc-p7-trace.py runtime-image/verify-newonly-output.py runtime-image/rdc-p7-collection.py
+          bash -n runtime-image/rdc-p7-single-input.sh
+          PYTHONPYCACHEPREFIX="$RUNNER_TEMP/rdc-p7-pycache" python3 -m py_compile runtime-image/rdc-p7-trace.py runtime-image/verify-newonly-output.py runtime-image/rdc-p7-collection.py runtime-image/rdc-p7-compare.py
           echo RDC_P7_SCRIPT_SYNTAX_PASS
       - name: Validate initial import and dependency lock
         shell: bash
@@ -405,6 +406,9 @@ jobs:
       - name: Trace actual S6-417 cold JIT and retain full-runtime numerical baseline
         shell: bash
         run: bash runtime-image/rdc-p7-run.sh
+      - name: Merge 11 layers using pinned HIT and compare single-input numerical results
+        shell: bash
+        run: bash runtime-image/rdc-p7-single-input.sh
       - name: Materialize trace-selected RDC structural candidate
         shell: bash
         run: |
