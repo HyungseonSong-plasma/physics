@@ -4,6 +4,15 @@
 # Cover relative permittivity eps_r=3.6 follows the original QVT geometry/material provenance.
 # SEE is disabled in this first practical pilot; cover bulk-conductivity leakage is not yet modeled.
 
+# Maxwell-only regions carry output fields, not Parent nonlinear equations.
+# Keep kernel/material coverage checks active everywhere else.
+[Problem]
+  kernel_coverage_check = SKIP_LIST
+  kernel_coverage_block_list = 'electrode top metal right bottom port'
+  material_coverage_check = SKIP_LIST
+  material_coverage_block_list = 'electrode top metal right bottom port'
+[]
+
 [Mesh]
   coord_type = RZ
   rz_coord_axis = Y
@@ -11,18 +20,96 @@
     type = FileMeshGenerator
     file = 'mesh.msh'
   []
-  [parent_blocks]
-    type = BlockDeletionGenerator
+  # Keep the original boundary geometry, but retain only the Parent owner side.
+  [owner_inlet]
+    type = SideSetsBetweenSubdomainsGenerator
     input = main
-    operation = keep
-    block = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3'
+    primary_block = plasma
+    paired_block = 'port'
+    included_boundaries = inlet
+    new_boundary = parent_inlet
+  []
+  [owner_outlet]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_inlet
+    primary_block = plasma
+    paired_block = 'bottom'
+    included_boundaries = outlet
+    new_boundary = parent_outlet
+  []
+  [owner_plasma_electrode]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_outlet
+    primary_block = plasma
+    paired_block = 'electrode'
+    included_boundaries = plasma_electrode
+    new_boundary = parent_plasma_electrode
+  []
+  [owner_plasma_metal]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_plasma_electrode
+    primary_block = plasma
+    paired_block = 'metal'
+    included_boundaries = plasma_metal
+    new_boundary = parent_plasma_metal
+  []
+  [owner_plasma_right]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_plasma_metal
+    primary_block = plasma
+    paired_block = 'right'
+    included_boundaries = plasma_right
+    new_boundary = parent_plasma_right
+  []
+  [owner_wafer_electrode]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_plasma_right
+    primary_block = wafer
+    paired_block = 'electrode'
+    included_boundaries = wafer_electrode
+    new_boundary = parent_wafer_electrode
+  []
+  [owner_focus_ring_ground]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_wafer_electrode
+    primary_block = focus_ring
+    paired_block = 'electrode bottom metal'
+    included_boundaries = focus_ring_ground
+    new_boundary = parent_focus_ring_ground
+  []
+  [owner_cover_outer_right]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_focus_ring_ground
+    primary_block = cover
+    paired_block = 'top'
+    included_boundaries = cover_outer_right
+    new_boundary = parent_cover_outer_right
+  []
+  [owner_vacuum_outer_ground]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = owner_cover_outer_right
+    primary_block = vacuum
+    paired_block = 'top'
+    included_boundaries = vacuum_outer_ground
+    new_boundary = parent_vacuum_outer_ground
+  []
+  [drop_two_sided_cut_boundaries]
+    type = BoundaryDeletionGenerator
+    input = owner_vacuum_outer_ground
+    boundary_names = 'inlet outlet plasma_electrode plasma_metal plasma_right wafer_electrode focus_ring_ground cover_outer_right vacuum_outer_ground'
+  []
+  [restore_parent_boundary_names]
+    type = RenameBoundaryGenerator
+    input = drop_two_sided_cut_boundaries
+    old_boundary = 'parent_inlet parent_outlet parent_plasma_electrode parent_plasma_metal parent_plasma_right parent_wafer_electrode parent_focus_ring_ground parent_cover_outer_right parent_vacuum_outer_ground'
+    new_boundary = 'inlet outlet plasma_electrode plasma_metal plasma_right wafer_electrode focus_ring_ground cover_outer_right vacuum_outer_ground'
   []
   [plasma_cover_owner]
     type = SideSetsBetweenSubdomainsGenerator
     primary_block = plasma
     paired_block = cover
     new_boundary = plasma_cover_owner
-    input = parent_blocks
+    input = restore_parent_boundary_names
   []
   [plasma_wafer_owner]
     type = SideSetsBetweenSubdomainsGenerator
@@ -80,31 +167,31 @@
 
 [Variables]
   [u]
-    type = INSFVVelocityVariable
+    type = BoundaryINSFVVelocityVariable
     initial_condition = 0.0
     block = plasma
   []
   [v]
-    type = INSFVVelocityVariable
+    type = BoundaryINSFVVelocityVariable
     initial_condition = 0.0
     block = plasma
   []
   [pressure]
-    type = INSFVPressureVariable
+    type = BoundaryINSFVPressureVariable
     block = plasma
   []
   [w_O2s]
-    type = INSFVScalarFieldVariable
+    type = BoundaryINSFVScalarFieldVariable
     initial_condition = 1.000010000100001e-05
     block = plasma
   []
   [w_O]
-    type = INSFVScalarFieldVariable
+    type = BoundaryINSFVScalarFieldVariable
     initial_condition = 5.0000500005000049e-06
     block = plasma
   []
   [w_Os]
-    type = INSFVScalarFieldVariable
+    type = BoundaryINSFVScalarFieldVariable
     initial_condition = 5.0000500005000049e-06
     block = plasma
   []
@@ -1040,6 +1127,23 @@
     block = plasma
   []
 
+  [u_momentum_time]
+    type = WCNSFVMomentumTimeDerivative
+    variable = u
+    rho = rho_neutral
+    drho_dt = drho_neutral_dt
+    momentum_component = x
+    block = plasma
+  []
+  [v_momentum_time]
+    type = WCNSFVMomentumTimeDerivative
+    variable = v
+    rho = rho_neutral
+    drho_dt = drho_neutral_dt
+    momentum_component = y
+    block = plasma
+  []
+
   [u_advection]
     type = INSFVMomentumAdvection
     variable = u
@@ -1474,7 +1578,7 @@
   []
 
   [neutral_outlet_mass]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v
@@ -1483,7 +1587,7 @@
     execute_on = 'INITIAL TIMESTEP_END'
   []
   [neutral_outlet_mdot_O2]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v
@@ -1492,7 +1596,7 @@
     execute_on = 'INITIAL TIMESTEP_END'
   []
   [neutral_outlet_mdot_O2s]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v
@@ -1501,7 +1605,7 @@
     execute_on = 'INITIAL TIMESTEP_END'
   []
   [neutral_outlet_mdot_O]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v
@@ -1510,7 +1614,7 @@
     execute_on = 'INITIAL TIMESTEP_END'
   []
   [neutral_outlet_mdot_Os]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = outlet
     vel_x = u
     vel_y = v
@@ -2291,12 +2395,29 @@
   checkpoint = true
   csv = true
   exodus = true
+  file_base = physics
   execute_on = 'INITIAL TIMESTEP_END'
 []
 rf_scale_t6 = 1.0
 source_enable_t6 = 1.0
 faraday_t6 = 96485.33212331001
 [AuxVariables]
+  # Output-only fields: never consumed by the plasma equations.
+  [E_real_full]
+    family = LAGRANGE
+    order = FIRST
+    block = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+  []
+  [E_imag_full]
+    family = LAGRANGE
+    order = FIRST
+    block = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+  []
+  [rf_absorbed_power_density]
+    family = MONOMIAL
+    order = CONSTANT
+    block = plasma
+  []
   [E_real_rf_t6]
     family = LAGRANGE
     order = FIRST
@@ -2334,6 +2455,13 @@ faraday_t6 = 96485.33212331001
   []
 []
 [AuxKernels]
+  [rf_absorbed_power_density_output]
+    type = MaterialRealAux
+    variable = rf_absorbed_power_density
+    property = q_rf_raw_t6
+    block = plasma
+    execute_on = 'INITIAL TIMESTEP_END'
+  []
   [freeze_log_ne_t6]
     type = ParsedAux
     variable = log_ne_rf_state_t6
@@ -2379,12 +2507,32 @@ faraday_t6 = 96485.33212331001
   [maxwell_t6]
     type = FullSolveMultiApp
     input_files = 'maxwell.i'
-    cli_args = 'Outputs/exodus=true;Outputs/csv=false'
+    cli_args = 'Outputs/exodus=false;Outputs/csv=false'
     execute_on = TIMESTEP_BEGIN
     no_restore = true
   []
 []
 [Transfers]
+  [E_real_full_from_maxwell]
+    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    from_multi_app = maxwell_t6
+    source_variable = E_real
+    variable = E_real_full
+    from_blocks = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+    to_blocks = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+    error_on_miss = true
+    execute_on = SAME_AS_MULTIAPP
+  []
+  [E_imag_full_from_maxwell]
+    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    from_multi_app = maxwell_t6
+    source_variable = E_imag
+    variable = E_imag_full
+    from_blocks = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+    to_blocks = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3 electrode metal top right bottom port'
+    error_on_miss = true
+    execute_on = SAME_AS_MULTIAPP
+  []
   [drive_to_maxwell_t6]
     type = MultiAppPostprocessorTransfer
     to_multi_app = maxwell_t6
@@ -2393,7 +2541,11 @@ faraday_t6 = 96485.33212331001
     execute_on = SAME_AS_MULTIAPP
   []
   [ne_to_maxwell_t6]
-    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    type = CoincidentLocationTransfer
+    source_type = nodes
+    num_nearest_points = 1
+    coincidence_tolerance = 1e-12
+    error_on_miss = true
     to_multi_app = maxwell_t6
     source_variable = electron_density_rf_state_t6
     variable = electron_density_state_t6
@@ -2402,7 +2554,11 @@ faraday_t6 = 96485.33212331001
     execute_on = SAME_AS_MULTIAPP
   []
   [mean_en_to_maxwell_t6]
-    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    type = CoincidentLocationTransfer
+    source_type = nodes
+    num_nearest_points = 1
+    coincidence_tolerance = 1e-12
+    error_on_miss = true
     to_multi_app = maxwell_t6
     source_variable = mean_energy_rf_state_t6
     variable = mean_energy_state_t6
@@ -2411,7 +2567,11 @@ faraday_t6 = 96485.33212331001
     execute_on = SAME_AS_MULTIAPP
   []
   [pressure_to_maxwell_t6]
-    type = MultiAppGeneralFieldShapeEvaluationTransfer
+    type = CoincidentLocationTransfer
+    source_type = centroids
+    num_nearest_points = 1
+    coincidence_tolerance = 1e-12
+    error_on_miss = true
     to_multi_app = maxwell_t6
     source_variable = pressure_rf_state_t6
     variable = pressure_state_t6

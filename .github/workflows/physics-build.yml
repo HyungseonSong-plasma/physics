@@ -2,7 +2,7 @@ name: Physics native build and flat assets
 run-name: Physics native CI / ${{ github.ref_name }} / ${{ github.sha }}
 on:
   push:
-    branches: [migration/unified-mesh, feature/exodus-output, main]
+    branches: [feature/parent-exodus, main]
     paths: ['app/**', 'assets/**', 'tests/**', 'build-base/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
   workflow_dispatch:
 permissions:
@@ -14,7 +14,7 @@ jobs:
     uses: HyungseonSong-plasma/work/.github/workflows/reusable_test.yml@1f12e2621fa1c2b55c00ba8e5a8e5975d9f08b9f
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 300
     env:
       BASE_IMAGE: ghcr.io/hyungseonsong-plasma/physics-build-base@sha256:2c3352da4f5c1b2ae98475fc01463ad0cdbc6ce7d221ce55055ddea152182008
     steps:
@@ -44,7 +44,16 @@ jobs:
               current[p.decode()] = (mode,sha)
           # Initial snapshot integrity is evidence, not a permanent source freeze:
           # later reviewed source changes require explicit manifest update.
-          assert current == expected, "Source differs from reviewed import manifest"
+          # Preserve original import provenance; overlay only explicit, reviewed source changes.
+          for e in m["parent_exodus"]["face_info_fix"]["source_changes"]:
+              p=e["path"]
+              assert p.startswith("app/")
+              if e["original_blob"] is None:
+                  assert p not in expected,p
+              else:
+                  assert expected[p]==(e["mode"],e["original_blob"]),p
+              expected[p]=(e["mode"],e["blob"])
+          assert current == expected, "Source differs from reviewed import manifest and explicit changes"
           import hashlib
           def blob(p): return subprocess.check_output(["git","rev-parse","HEAD:"+p],text=True).strip()
           for e in m["included"]:
@@ -55,7 +64,7 @@ jobs:
               assert blob(e["path"])==expected_blob,e["path"]
           for p,digest in m["unified_mesh"]["files"].items():
               if p=="input.i":
-                  assert blob("assets/input.i")==m["exodus_output"]["parent_input_blob"],p
+                  assert blob("assets/input.i")==m["parent_exodus"]["parent_input_blob"],p
               else:
                   assert hashlib.sha256(pathlib.Path("assets",p).read_bytes()).hexdigest()==digest,p
           for p in ("physics_app","runtime-image","database","assets/database","assets/chemistry","app/database","assets/maxwell.msh"):
@@ -122,6 +131,8 @@ jobs:
               set -e
               test "$rc" -ne 0 && test "$rc" -ne 124
               grep -q InvalidPhysicsPilotObject /evidence/negative.log
+              git -C "$MOOSE_DIR" diff --exit-code HEAD --
+              echo MOOSE_TRACKED_SOURCE_UNCHANGED_PASS
               echo PHYSICS_NATIVE_BUILD_AND_SMOKE_PASS
               date -u
             '
@@ -130,9 +141,9 @@ jobs:
         run: |
           set -euo pipefail
           (cd assets && sha256sum -c mesh.sha256)
-          bash -n tests/mesh/qualify-unified.sh
-          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/compare-unified.py tests/mesh/exodus-reader.py tests/mesh/verify-exodus.py
-          bash tests/mesh/qualify-unified.sh
+          bash -n tests/mesh/qualify-parent-exodus.sh
+          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/exodus-reader.py tests/mesh/verify-parent-exodus.py tests/mesh/diagnose-rf-transfer.py tests/mesh/diagnose-fvm-conservation.py
+          bash tests/mesh/qualify-parent-exodus.sh
       - name: Upload bounded evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -147,4 +158,20 @@ jobs:
           name: physics-exodus
           path: ${{ runner.temp }}/physics-exodus/
           if-no-files-found: error
+          retention-days: 30
+      - name: Run 400 W transient qualification to 100 us
+        if: github.ref == 'refs/heads/feature/parent-exodus'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tests/mesh/qualify-transient-100us.sh
+          python3 -m py_compile tests/mesh/verify-transient-100us.py
+          bash tests/mesh/qualify-transient-100us.sh
+      - name: Upload 400 W 100 us evidence and native output
+        if: always() && github.ref == 'refs/heads/feature/parent-exodus'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: physics-400w-100us
+          path: ${{ runner.temp }}/physics-400w-100us/
+          if-no-files-found: warn
           retention-days: 30
