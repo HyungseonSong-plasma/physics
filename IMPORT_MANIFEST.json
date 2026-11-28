@@ -865,7 +865,7 @@
       "source_path": "physics_app/include/physics/plasma/MaxwellPhysics.h",
       "path": "app/include/physics/plasma/MaxwellPhysics.h",
       "mode": "100644",
-      "blob": "fafc6d2555ee2a49291d992bd168abb015f80d46"
+      "blob": "e49117afb8f452a2b5ae4f8a46b4902c8041f5d3"
     },
     {
       "source_path": "physics_app/include/physics/plasma/NVTransport.h",
@@ -1243,7 +1243,7 @@
       "source_path": "physics_app/src/physics/plasma/MaxwellPhysics.C",
       "path": "app/src/physics/plasma/MaxwellPhysics.C",
       "mode": "100644",
-      "blob": "5551a82687f71e898d341fd7c8a3d850b78c4320"
+      "blob": "c187f3e2b785920827a29c09c9588084c412421c"
     },
     {
       "source_path": "physics_app/src/physics/plasma/NVTransport.C",
@@ -1491,14 +1491,14 @@
   },
   "new_only_assets": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "stage": "P7_CANDIDATE_MAXWELL_COIL_SOURCE",
+    "stage": "P7_CANDIDATE_PHYSICAL_MAXWELL_DSL",
     "candidate_blobs": {
       "assets/input.i": "a84e1dfd8db1ba6f3affbb03c81ac374af683ff9",
-      "assets/maxwell.i": "e1ff1b0f2442ec2ef46709f83dad6b390e9dda00",
+      "assets/maxwell.i": "b72ee2d59b82c8ad3e3830e2b1f0580e7e17439d",
       "assets/chemistry.json": "121095f7932276b9fa843d9dfc9bf8332911d5c5",
       "assets/neutral_transport_aliases.txt": "98075edf56cbe7d3b5e96c531efe74277ffc0a37"
     },
-    "retained": "Native RF constitutive materials, parent-child transfers, drive controller and receiver, neutral reaction source kernels, H25, variables and diagnostics. Exact existing coil amplitude expression preserved.",
+    "retained": "Explicit physical RF region catalogue, live mobility/conductivity and power density materials; parent-child transfers, drive controller and receiver; neutral reaction sources, H25 and diagnostics. Coil area numeric as approved; numerical equivalence pending.",
     "science": "SCIENCE_HOLD",
     "source_delta": [
       {
@@ -1560,6 +1560,18 @@
         "prior_blob": "fa9ea7dc7d3e25386a1a2234b8330e24ca379ecb",
         "candidate_blob": "5551a82687f71e898d341fd7c8a3d850b78c4320",
         "reason": "Canonical frequency_Hz spelling, numeric input and single frequency authority; legacy frequency_hz accepted exclusively for existing fixtures."
+      },
+      {
+        "path": "app/src/physics/plasma/MaxwellPhysics.C",
+        "prior_blob": "5551a82687f71e898d341fd7c8a3d850b78c4320",
+        "candidate_blob": "c187f3e2b785920827a29c09c9588084c412421c",
+        "reason": "Physical Maxwell DSL: generate default RF FE variables, geometry functions, reaction/coupling materials and driven-coil sources; keep live RF control interface and constitutive closure."
+      },
+      {
+        "path": "app/include/physics/plasma/MaxwellPhysics.h",
+        "prior_blob": "fafc6d2555ee2a49291d992bd168abb015f80d46",
+        "candidate_blob": "e49117afb8f452a2b5ae4f8a46b4902c8041f5d3",
+        "reason": "Physical Maxwell DSL: generate default RF FE variables, geometry functions, reaction/coupling materials and driven-coil sources; keep live RF control interface and constitutive closure."
       }
     ],
     "alias_projection": {

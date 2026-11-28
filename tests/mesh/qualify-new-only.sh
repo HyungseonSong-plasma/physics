@@ -142,10 +142,10 @@ set -e
 test "$rc" -ne 0 && test "$rc" -ne 124
 grep -q "elastic coefficients must be finite and positive" "$ev/elastic-negative.log"
 echo ELASTIC_COEFFICIENT_NEGATIVE_PASS
-# Missing drive scale must reject the driven-coil configuration.
+# Nonpositive coil area must reject the physical Maxwell configuration.
 badcoil="$RUNNER_TEMP/flat-coil-negative"
 mkdir "$badcoil"; cp -a assets "$badcoil/assets"
-sed -i '/coil_drive_scale = /d' "$badcoil/assets/maxwell.i"
+sed -i 's/coil_cross_section_m2 = .*/coil_cross_section_m2 = 0/' "$badcoil/assets/maxwell.i"
 set +e
 timeout 480 docker run --rm "${opts[@]}" -v "$badcoil:/case" "$BASE_IMAGE" -lc '
   source /environment
@@ -155,7 +155,7 @@ timeout 480 docker run --rm "${opts[@]}" -v "$badcoil:/case" "$BASE_IMAGE" -lc '
 rc=$?
 set -e
 test "$rc" -ne 0 && test "$rc" -ne 124
-grep -q "Driven coils require coil_blocks, coil_drive_scale and imaginary_source together" "$ev/coil-negative.log"
+grep -q "Coil current and cross section must be finite and positive" "$ev/coil-negative.log"
 echo MAXWELL_COIL_NEGATIVE_PASS
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
 if test "${#kinds[@]}" -eq 2; then
