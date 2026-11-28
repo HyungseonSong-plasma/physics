@@ -14,7 +14,7 @@ jobs:
     uses: HyungseonSong-plasma/work/.github/workflows/reusable_test.yml@1f12e2621fa1c2b55c00ba8e5a8e5975d9f08b9f
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 300
     env:
       BASE_IMAGE: ghcr.io/hyungseonsong-plasma/physics-build-base@sha256:2c3352da4f5c1b2ae98475fc01463ad0cdbc6ce7d221ce55055ddea152182008
     steps:
@@ -158,4 +158,20 @@ jobs:
           name: physics-exodus
           path: ${{ runner.temp }}/physics-exodus/
           if-no-files-found: error
+          retention-days: 30
+      - name: Run 400 W transient qualification to 100 us
+        if: github.ref == 'refs/heads/feature/parent-exodus'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tests/mesh/qualify-transient-100us.sh
+          python3 -m py_compile tests/mesh/verify-transient-100us.py
+          bash tests/mesh/qualify-transient-100us.sh
+      - name: Upload 400 W 100 us evidence and native output
+        if: always() && github.ref == 'refs/heads/feature/parent-exodus'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: physics-400w-100us
+          path: ${{ runner.temp }}/physics-400w-100us/
+          if-no-files-found: warn
           retention-days: 30
