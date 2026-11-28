@@ -169,9 +169,11 @@
     execute_on = TIMESTEP_END
     outputs = fvm_audit
   []
+  # Both baseline and candidate define these plasma-owned interface sidesets.
+  # Keep the physical BCs unchanged; only diagnostic integration uses them.
   [audit_flux_wall_mass]
     type = BoundaryVolumetricFlowRate
-    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring'
+    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover_owner plasma_wafer_owner plasma_focus_ring_owner'
     vel_x = u
     vel_y = v
     advected_quantity = rho_neutral
@@ -181,7 +183,7 @@
   []
   [audit_flux_wall_momentum_x]
     type = BoundaryVolumetricFlowRate
-    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring'
+    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover_owner plasma_wafer_owner plasma_focus_ring_owner'
     vel_x = u
     vel_y = v
     advected_quantity = audit_rho_momentum_x
@@ -191,7 +193,7 @@
   []
   [audit_flux_wall_momentum_y]
     type = BoundaryVolumetricFlowRate
-    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring'
+    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover_owner plasma_wafer_owner plasma_focus_ring_owner'
     vel_x = u
     vel_y = v
     advected_quantity = audit_rho_momentum_y
