@@ -1,7 +1,7 @@
 name: Physics native build and flat assets
 on:
   push:
-    branches: [migration/unified-mesh, main]
+    branches: [migration/unified-mesh, feature/exodus-output, main]
     paths: ['app/**', 'assets/**', 'tests/**', 'build-base/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
   workflow_dispatch:
 permissions:
@@ -53,7 +53,10 @@ jobs:
               expected_blob=e["blob"]
               assert blob(e["path"])==expected_blob,e["path"]
           for p,digest in m["unified_mesh"]["files"].items():
-              assert hashlib.sha256(pathlib.Path("assets",p).read_bytes()).hexdigest()==digest,p
+              if p=="input.i":
+                  assert blob("assets/input.i")==m["exodus_output"]["parent_input_blob"],p
+              else:
+                  assert hashlib.sha256(pathlib.Path("assets",p).read_bytes()).hexdigest()==digest,p
           for p in ("physics_app","runtime-image","database","assets/database","assets/chemistry","app/database","assets/maxwell.msh"):
               assert not pathlib.Path(p).exists(),p
           assert blob("assets/mesh.msh")==m["unified_mesh"]["candidate_blob"]
@@ -127,7 +130,7 @@ jobs:
           set -euo pipefail
           (cd assets && sha256sum -c mesh.sha256)
           bash -n tests/mesh/qualify-unified.sh
-          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/compare-unified.py tests/mesh/exodus-reader.py
+          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/compare-unified.py tests/mesh/exodus-reader.py tests/mesh/verify-exodus.py
           bash tests/mesh/qualify-unified.sh
       - name: Upload bounded evidence
         if: always()
@@ -136,4 +139,11 @@ jobs:
           name: physics-flat-assets-evidence
           path: ${{ runner.temp }}/physics-evidence/
           if-no-files-found: warn
+          retention-days: 30
+      - name: Upload verified Exodus results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: physics-exodus
+          path: ${{ runner.temp }}/physics-exodus/
+          if-no-files-found: error
           retention-days: 30

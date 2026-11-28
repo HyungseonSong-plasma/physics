@@ -45,4 +45,9 @@ test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/exec
 if test "${#kinds[@]}" -eq 2; then
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/compare-unified.py /evidence'
 fi
+# Only publish after the native and field gates pass.
+mkdir -p "$RUNNER_TEMP/physics-exodus"
+docker run --rm --network none --entrypoint /bin/bash --user 0:0 \
+  -v "$ev/conformal:/evidence:ro" -v "$root/tests/mesh:/scripts:ro" \
+  -v "$RUNNER_TEMP/physics-exodus:/results" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/verify-exodus.py /evidence/fields /results'
 echo NATIVE_UNIFIED_MESH_BOUNDED_PASS

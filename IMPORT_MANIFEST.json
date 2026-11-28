@@ -1482,5 +1482,11 @@
     "report": "tests/mesh/unified-report.json",
     "axis_orphan_segments_reconstructed": 19,
     "acceptance": "Static geometry only; native comparison pending; no science threshold."
+  },
+  "exodus_output": {
+    "validated_mesh_commit": "5c0159e75811442ef2a6ca5d32994690930341b9",
+    "validated_mesh_run": 46136191787,
+    "parent_input_blob": "beb0c7225c9871d373ca0af7fc0ea4db51b4d3cf",
+    "scope": "Enable Maxwell Exodus only; retain default MultiApp-qualified file base and latest steady solve output; Parent transient history unchanged."
   }
 }
