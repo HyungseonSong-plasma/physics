@@ -1645,6 +1645,18 @@
           "mode": "100644",
           "original_blob": null,
           "blob": "3b051d4495baa9029f971a9addb2bef6358444a4"
+        },
+        {
+          "path": "app/include/postprocessors/PhysicsFVMomentumBudget.h",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "0f1ef0266dc55b8023d866f03d4f73146b4fd586"
+        },
+        {
+          "path": "app/src/postprocessors/PhysicsFVMomentumBudget.C",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "ac97917c0e47615a3205a8c57fc7fb46c0d93b2a"
         }
       ]
     },
@@ -1693,9 +1705,14 @@
       "baseline_comparison": "4 ULPs binary64 at field scale; exact direct transfer and frozen states remain required"
     },
     "fvm_physical_audit": {
-      "scope": "diagnostic overlay only, same original equations, native RHS residual norms and reconstructed mass balance, spatial error boundary vs interior; no acceptance threshold change",
-      "status": "PENDING",
-      "previous_run": 46167636036
+      "scope": "diagnostic overlay and accepted-state reconstructed steady RZ momentum budget; six endpoint velocity comparisons report-only conditional on strict other parity and numerical conservation; SCIENCE_HOLD",
+      "status": "PENDING_NATIVE_QUALIFICATION",
+      "previous_run": 46170997316,
+      "numerical_budget_rtol": 1e-8,
+      "source_paths": [
+        "app/include/postprocessors/PhysicsFVMomentumBudget.h",
+        "app/src/postprocessors/PhysicsFVMomentumBudget.C"
+      ]
     }
   }
 }

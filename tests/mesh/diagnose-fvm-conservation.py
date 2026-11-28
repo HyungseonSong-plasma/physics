@@ -108,11 +108,13 @@ rings={"cut_adjacent":[t for t in keys if distance[t]==0],
 edges=Counter(tuple(sorted((t[i],t[(i+1)%3]))) for t in keys for i in range(3))
 boundary=[t for t in keys if any(edges[tuple(sorted((t[i],t[(i+1)%3])))]==1 for i in range(3))]
 interior=[t for t in keys if t not in set(boundary)]
-report={"status":"FVM_DIAGNOSTIC_ONLY","spatial":{},"mass_budget":{},"residual_norms":{},"scope":"same mesh; 1 ns endpoint; native RHS norms (last assembled residual), not independent momentum budget or mesh convergence"}
+report={"status":"FVM_DIAGNOSTIC_ONLY","spatial":{},"mass_budget":{},"residual_norms":{},"scope":"same mesh; 1 ns endpoint; accepted-state reconstructed domain momentum terms, native last-assembled RHS norms; not independent discretization or mesh convergence"}
 report["face_topology"]=topology
 report["cut_distance"]={n:{k:metrics(a[n],b[n],ts) for k,ts in rings.items() if ts} for n in ("u","v","pressure")}
 report["capture_control"]={n:metrics(b[n],capture[n],keys) for n in b}
 report["boundary_transport"]={}
+report["momentum_budget"]={}
+BUDGET_RTOL=1e-8
 for n in a:
     report["spatial"][n]={"all":metrics(a[n],b[n],keys),"boundary_cells":metrics(a[n],b[n],boundary),"interior_cells":metrics(a[n],b[n],interior)}
 for kind in ("baseline","candidate","candidate_rf_capture"):
@@ -141,6 +143,48 @@ for kind in ("baseline","candidate","candidate_rf_capture"):
         "outlet_mass_reporting_delta_kg_s":fluxes["outlet"]["mass"]-outflow,
         "wall_mass_normalized_to_inlet":abs(fluxes["wall"]["mass"])/inflow,
         "scope":"native reporting face flux; inlet BC imposed separately; advective momentum only, no pressure/viscous/RZ closure"}
+    # Measured net wall flux is included, not assumed zero.
+    balance=math.fsum((accum,-inflow,fluxes["outlet"]["mass"],fluxes["wall"]["mass"],-src))
+    report["mass_budget"][kind].update(
+        reconstructed_balance_kg_s=balance,normalized_to_inlet=abs(balance)/inflow,
+        note="cell-average time/source terms; imposed inlet; native outlet and wall net reporting flux")
+    momentum={}
+    for var,axis in (("u","x"),("v","y")):
+        names=("pressure","viscous","inlet","rz") if var=="u" else ("pressure","viscous","inlet")
+        terms={n:x[f"audit_budget_{var}_{n}"] for n in names}
+        absolute={n:x[f"audit_budget_{var}_{n}_abs"] for n in names}
+        for group in ("outlet","wall"):
+            terms[group+"_advection"]=fluxes[group]["momentum_"+axis]
+            absolute[group+"_advection"]=abs(terms[group+"_advection"])
+        assert all(math.isfinite(q) for q in terms.values())
+        assert all(math.isfinite(q) and q>=0 for q in absolute.values())
+        assert all(abs(terms[n])<=absolute[n]+1e-13*max(absolute[n],1e-300) for n in terms)
+        scale=math.fsum(absolute.values())
+        assert scale>0 and absolute["pressure"]>0 and absolute["viscous"]>0,(kind,var,absolute)
+        if var=="u":assert absolute["inlet"]>0 and absolute["rz"]>0,(kind,var,absolute)
+        else:assert terms["inlet"]==0,(kind,var,terms)
+        imbalance=math.fsum(terms.values())
+        rel=abs(imbalance)/scale
+        rhs_rel=norms[var]["l_1"]/scale
+        momentum[var]={"signed_terms_N":terms,"absolute_contribution_scale_N":scale,
+                       "abs_terms_N":absolute,"balance_N":imbalance,"normalized_balance":rel,
+                       "native_rhs_l1_normalized":rhs_rel,
+                       "pass":rel<=BUDGET_RTOL and rhs_rel<=BUDGET_RTOL}
+    report["momentum_budget"][kind]=momentum
+checks={}
+for kind in ("baseline","candidate","candidate_rf_capture"):
+    checks[kind]={
+        "mass_balance":report["mass_budget"][kind]["normalized_to_inlet"]<=BUDGET_RTOL,
+        "wall_net_mass":report["boundary_transport"][kind]["wall_mass_normalized_to_inlet"]<=BUDGET_RTOL,
+        "outlet_mass_reporting":abs(report["boundary_transport"][kind]["outlet_mass_reporting_delta_kg_s"])<=BUDGET_RTOL*report["mass_budget"][kind]["inlet_kg_s"],
+        "radial_momentum":report["momentum_budget"][kind]["u"]["pass"],
+        "axial_momentum":report["momentum_budget"][kind]["v"]["pass"]}
+capture_exact=all(v["max_abs"]==0 for v in report["capture_control"].values())
+report["conservation_gate"]={"relative_numerical_tolerance":BUDGET_RTOL,
+    "cases":checks,"capture_exact":capture_exact,
+    "pass":capture_exact and all(all(v.values()) for v in checks.values()),
+    "scope":"one-step discrete numerical qualification only; SCIENCE_HOLD; no mesh/time convergence or scientific acceptance"}
 (root/"fvm-audit.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
 print(json.dumps(report,indent=2,sort_keys=True))
 print("FVM_PHYSICAL_DIAGNOSTIC_CAPTURE_COMPLETE")
+print("FVM_RECONSTRUCTED_BUDGET_PASS" if report["conservation_gate"]["pass"] else "FVM_RECONSTRUCTED_BUDGET_FAIL")
