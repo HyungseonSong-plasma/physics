@@ -3,7 +3,7 @@
 #include "MooseVariableFV.h"
 #include "MooseEnum.h"
 
-// Reconstruct accepted-state steady RZ momentum terms without reading the RHS.
+// Reconstruct accepted-state transient RZ momentum terms without reading the RHS.
 class PhysicsFVMomentumBudget : public ElementPostprocessor
 {
 public:
@@ -20,6 +20,7 @@ private:
   MooseVariableFVReal & _velocity;
   const Moose::Functor<ADReal> & _pressure;
   const Moose::Functor<ADReal> & _rho;
+  const Moose::Functor<ADReal> & _rho_dot;
   const Moose::Functor<ADReal> & _mu;
   const PostprocessorValue & _mdot;
   const PostprocessorValue & _area;

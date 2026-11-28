@@ -139,6 +139,7 @@ try:
     else:
         conservation_pass=not velocity_failures
         report["conservation_gate"]={"scope":"not run: no baseline","pass":None}
+    report["momentum_model"]="WCNSFVMomentumTimeDerivative on u and v; matched transient baseline; implicit Euler"
     report["science"]="SCIENCE_HOLD"
     report["status"]="NATIVE_PARENT_EXODUS_PASS" if not strict_failures and conservation_pass else "NATIVE_PARENT_EXODUS_FAIL"
     (root/"parent-exodus-parity.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")

@@ -6,6 +6,30 @@ kinds=(candidate)
 if test "$GITHUB_REF" = refs/heads/feature/parent-exodus; then
   kinds=(baseline candidate candidate_rf_capture)
   git show 33195c79338b0597b462800109b81d6fbe75c932:assets/input.i >"$RUNNER_TEMP/baseline-input.i"
+  # Match the intentional momentum model change in the A/B reference.
+  # Extract the exact two canonical blocks; historical Git input stays intact.
+  python3 - "$RUNNER_TEMP/baseline-input.i" <<'PY'
+import re,sys
+from pathlib import Path
+candidate=Path("assets/input.i").read_text()
+p=Path(sys.argv[1])
+baseline=p.read_text()
+blocks=[]
+for var,axis in (("u","x"),("v","y")):
+    pattern=rf"(?m)^  \[{var}_momentum_time\]\n(?:(?!^  \[).+\n)*^  \[\]\n"
+    matches=re.findall(pattern,candidate)
+    assert len(matches)==1,(var,len(matches))
+    block=matches[0]
+    assert "type = WCNSFVMomentumTimeDerivative" in block
+    assert f"variable = {var}" in block and f"momentum_component = {axis}" in block
+    assert "rho = rho_neutral" in block and "drho_dt = drho_neutral_dt" in block
+    assert f"[{var}_momentum_time]" not in baseline
+    blocks.append(block)
+assert baseline.count("  [u_advection]\n")==1
+assert "scheme = implicit-euler" in baseline and "scheme = implicit-euler" in candidate
+p.write_text(baseline.replace("  [u_advection]\n","".join(blocks)+"\n  [u_advection]\n"))
+print("MATCHED_TRANSIENT_MOMENTUM_BASELINE_PASS")
+PY
 fi
 opts=(--network none --workdir /case --entrypoint /bin/bash --user 0:0
   --env OXYGEN_RESEARCH_400=1 --env OXYGEN_RESEARCH_FULL24=0 --env OXYGEN_RESEARCH_EI2738_FORMULA=0 --env OXYGEN_RESEARCH_QUICK_5MIN=0

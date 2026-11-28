@@ -150,7 +150,7 @@ for kind in ("baseline","candidate","candidate_rf_capture"):
         note="cell-average time/source terms; imposed inlet; native outlet and wall net reporting flux")
     momentum={}
     for var,axis in (("u","x"),("v","y")):
-        names=("pressure","viscous","inlet","rz") if var=="u" else ("pressure","viscous","inlet")
+        names=("time","pressure","viscous","inlet","rz") if var=="u" else ("time","pressure","viscous","inlet")
         terms={n:x[f"audit_budget_{var}_{n}"] for n in names}
         absolute={n:x[f"audit_budget_{var}_{n}_abs"] for n in names}
         for group in ("outlet","wall"):
@@ -161,7 +161,7 @@ for kind in ("baseline","candidate","candidate_rf_capture"):
         assert all(abs(terms[n])<=absolute[n]+1e-13*max(absolute[n],1e-300) for n in terms)
         scale=math.fsum(absolute.values())
         assert scale>0 and absolute["pressure"]>0 and absolute["viscous"]>0,(kind,var,absolute)
-        if var=="u":assert absolute["inlet"]>0 and absolute["rz"]>0,(kind,var,absolute)
+        if var=="u":assert absolute["inlet"]>0 and absolute["rz"]>0 and absolute["time"]>0,(kind,var,absolute)
         else:assert terms["inlet"]==0,(kind,var,terms)
         imbalance=math.fsum(terms.values())
         rel=abs(imbalance)/scale
@@ -183,6 +183,7 @@ capture_exact=all(v["max_abs"]==0 for v in report["capture_control"].values())
 report["conservation_gate"]={"relative_numerical_tolerance":BUDGET_RTOL,
     "cases":checks,"capture_exact":capture_exact,
     "pass":capture_exact and all(all(v.values()) for v in checks.values()),
+    "momentum_model":"WCNS product-rule time derivative with implicit Euler; same model in baseline and candidate",
     "scope":"one-step discrete numerical qualification only; SCIENCE_HOLD; no mesh/time convergence or scientific acceptance"}
 (root/"fvm-audit.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
 print(json.dumps(report,indent=2,sort_keys=True))

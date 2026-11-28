@@ -1127,6 +1127,23 @@
     block = plasma
   []
 
+  [u_momentum_time]
+    type = WCNSFVMomentumTimeDerivative
+    variable = u
+    rho = rho_neutral
+    drho_dt = drho_neutral_dt
+    momentum_component = x
+    block = plasma
+  []
+  [v_momentum_time]
+    type = WCNSFVMomentumTimeDerivative
+    variable = v
+    rho = rho_neutral
+    drho_dt = drho_neutral_dt
+    momentum_component = y
+    block = plasma
+  []
+
   [u_advection]
     type = INSFVMomentumAdvection
     variable = u

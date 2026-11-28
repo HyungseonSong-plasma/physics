@@ -19,11 +19,12 @@ PhysicsFVMomentumBudget::validParams()
   params.addRequiredParam<VariableName>("variable", "FV velocity component");
   params.addRequiredParam<MooseFunctorName>("pressure", "Pressure functor");
   params.addRequiredParam<MooseFunctorName>("rho", "Density functor");
+  params.addRequiredParam<MooseFunctorName>("drho_dt", "Density time derivative functor");
   params.addRequiredParam<MooseFunctorName>("mu", "Dynamic viscosity functor");
   params.addRequiredParam<PostprocessorName>("inlet_mdot", "Imposed inlet mass flow");
   params.addRequiredParam<PostprocessorName>("inlet_area", "Inlet RZ area");
   params.addRequiredParam<MooseEnum>("component", MooseEnum("x=0 y=1"), "Momentum component");
-  params.addRequiredParam<MooseEnum>("term", MooseEnum("pressure viscous inlet rz"), "Reconstructed term");
+  params.addRequiredParam<MooseEnum>("term", MooseEnum("pressure viscous inlet rz time"), "Reconstructed term");
   params.addParam<bool>("absolute", false, "Sum absolute cell/face contributions for normalization");
   return params;
 }
@@ -35,6 +36,7 @@ PhysicsFVMomentumBudget::PhysicsFVMomentumBudget(const InputParameters & p)
         Moose::VarFieldType::VAR_FIELD_STANDARD))),
     _pressure(getFunctor<ADReal>("pressure")),
     _rho(getFunctor<ADReal>("rho")),
+    _rho_dot(getFunctor<ADReal>("drho_dt")),
     _mu(getFunctor<ADReal>("mu")),
     _mdot(getPostprocessorValue("inlet_mdot")),
     _area(getPostprocessorValue("inlet_area")),
@@ -63,6 +65,15 @@ PhysicsFVMomentumBudget::execute()
   const auto state = determineState();
   const Moose::ElemArg cell{_current_elem, false};
   using MetaPhysicL::raw_value;
+  if (_term == "time")
+  {
+    // Match WCNSFVMomentumTimeDerivative's native product rule using
+    // accepted-state functors rather than reading its assembled residual.
+    const auto value = _rho_dot(cell, state) * _velocity(cell, state) +
+                       _rho(cell, state) * _velocity.dot(cell, state);
+    add(raw_value(value) * _current_elem_volume);
+    return;
+  }
   if (_term == "pressure")
   {
     add(raw_value(_pressure.gradient(cell, state)(_component)) * _current_elem_volume);

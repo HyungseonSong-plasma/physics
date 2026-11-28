@@ -203,6 +203,7 @@
   []
   [audit_budget_u_pressure]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = u
     pressure = pressure
     rho = rho_neutral
@@ -218,6 +219,7 @@
   []
   [audit_budget_u_pressure_abs]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = u
     pressure = pressure
     rho = rho_neutral
@@ -233,6 +235,7 @@
   []
   [audit_budget_u_viscous]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = u
     pressure = pressure
     rho = rho_neutral
@@ -248,6 +251,7 @@
   []
   [audit_budget_u_viscous_abs]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = u
     pressure = pressure
     rho = rho_neutral
@@ -263,6 +267,7 @@
   []
   [audit_budget_u_inlet]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = u
     pressure = pressure
     rho = rho_neutral
@@ -278,6 +283,7 @@
   []
   [audit_budget_u_inlet_abs]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = u
     pressure = pressure
     rho = rho_neutral
@@ -293,6 +299,7 @@
   []
   [audit_budget_u_rz]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = u
     pressure = pressure
     rho = rho_neutral
@@ -308,6 +315,7 @@
   []
   [audit_budget_u_rz_abs]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = u
     pressure = pressure
     rho = rho_neutral
@@ -323,6 +331,7 @@
   []
   [audit_budget_v_pressure]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = v
     pressure = pressure
     rho = rho_neutral
@@ -338,6 +347,7 @@
   []
   [audit_budget_v_pressure_abs]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = v
     pressure = pressure
     rho = rho_neutral
@@ -353,6 +363,7 @@
   []
   [audit_budget_v_viscous]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = v
     pressure = pressure
     rho = rho_neutral
@@ -368,6 +379,7 @@
   []
   [audit_budget_v_viscous_abs]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = v
     pressure = pressure
     rho = rho_neutral
@@ -383,6 +395,7 @@
   []
   [audit_budget_v_inlet]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = v
     pressure = pressure
     rho = rho_neutral
@@ -398,6 +411,7 @@
   []
   [audit_budget_v_inlet_abs]
     type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
     variable = v
     pressure = pressure
     rho = rho_neutral
@@ -411,12 +425,76 @@
     execute_on = TIMESTEP_END
     outputs = fvm_audit
   []
+  [audit_budget_u_time]
+    type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
+    variable = u
+    pressure = pressure
+    rho = rho_neutral
+    mu = mu_flow
+    inlet_mdot = neutral_inlet_mdot
+    inlet_area = neutral_inlet_area
+    component = x
+    term = time
+    absolute = false
+    block = plasma
+    execute_on = TIMESTEP_END
+    outputs = fvm_audit
+  []
+  [audit_budget_u_time_abs]
+    type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
+    variable = u
+    pressure = pressure
+    rho = rho_neutral
+    mu = mu_flow
+    inlet_mdot = neutral_inlet_mdot
+    inlet_area = neutral_inlet_area
+    component = x
+    term = time
+    absolute = true
+    block = plasma
+    execute_on = TIMESTEP_END
+    outputs = fvm_audit
+  []
+  [audit_budget_v_time]
+    type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
+    variable = v
+    pressure = pressure
+    rho = rho_neutral
+    mu = mu_flow
+    inlet_mdot = neutral_inlet_mdot
+    inlet_area = neutral_inlet_area
+    component = y
+    term = time
+    absolute = false
+    block = plasma
+    execute_on = TIMESTEP_END
+    outputs = fvm_audit
+  []
+  [audit_budget_v_time_abs]
+    type = PhysicsFVMomentumBudget
+    drho_dt = drho_neutral_dt
+    variable = v
+    pressure = pressure
+    rho = rho_neutral
+    mu = mu_flow
+    inlet_mdot = neutral_inlet_mdot
+    inlet_area = neutral_inlet_area
+    component = y
+    term = time
+    absolute = true
+    block = plasma
+    execute_on = TIMESTEP_END
+    outputs = fvm_audit
+  []
 []
 [Outputs]
   [fvm_audit]
     type = CSV
     file_base = /evidence/fvm-audit
     execute_on = TIMESTEP_END
-    show = 'audit_mass_time audit_source_EI415 audit_source_EI401 audit_source_EI417 audit_source_H25 audit_pressure_l_1 audit_pressure_l_2 audit_pressure_l_inf audit_u_l_1 audit_u_l_2 audit_u_l_inf audit_v_l_1 audit_v_l_2 audit_v_l_inf audit_flux_outlet_mass audit_flux_outlet_momentum_x audit_flux_outlet_momentum_y audit_flux_wall_mass audit_flux_wall_momentum_x audit_flux_wall_momentum_y audit_budget_u_pressure audit_budget_u_pressure_abs audit_budget_u_viscous audit_budget_u_viscous_abs audit_budget_u_inlet audit_budget_u_inlet_abs audit_budget_u_rz audit_budget_u_rz_abs audit_budget_v_pressure audit_budget_v_pressure_abs audit_budget_v_viscous audit_budget_v_viscous_abs audit_budget_v_inlet audit_budget_v_inlet_abs'
+    show = 'audit_mass_time audit_source_EI415 audit_source_EI401 audit_source_EI417 audit_source_H25 audit_pressure_l_1 audit_pressure_l_2 audit_pressure_l_inf audit_u_l_1 audit_u_l_2 audit_u_l_inf audit_v_l_1 audit_v_l_2 audit_v_l_inf audit_flux_outlet_mass audit_flux_outlet_momentum_x audit_flux_outlet_momentum_y audit_flux_wall_mass audit_flux_wall_momentum_x audit_flux_wall_momentum_y audit_budget_u_pressure audit_budget_u_pressure_abs audit_budget_u_viscous audit_budget_u_viscous_abs audit_budget_u_inlet audit_budget_u_inlet_abs audit_budget_u_rz audit_budget_u_rz_abs audit_budget_v_pressure audit_budget_v_pressure_abs audit_budget_v_viscous audit_budget_v_viscous_abs audit_budget_v_inlet audit_budget_v_inlet_abs audit_budget_u_time audit_budget_u_time_abs audit_budget_v_time audit_budget_v_time_abs'
   []
 []

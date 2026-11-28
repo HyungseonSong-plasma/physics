@@ -1491,7 +1491,7 @@
   },
   "parent_exodus": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "parent_input_blob": "72d4690663c80f70391246800901f5782c3cc93c",
+    "parent_input_blob": "149d4431b54bfcefe88e83d8ee5e74dcd33cd510",
     "mesh_unchanged": true,
     "mode": "Parent full 14 volume blocks plus 3 lower-dimensional surface blocks; dedicated visualization-only RF auxiliary variables; child output disabled",
     "status": "PENDING_NATIVE_PARITY_AND_OUTPUT_VALIDATION",
@@ -1650,13 +1650,13 @@
           "path": "app/include/postprocessors/PhysicsFVMomentumBudget.h",
           "mode": "100644",
           "original_blob": null,
-          "blob": "0f1ef0266dc55b8023d866f03d4f73146b4fd586"
+          "blob": "127ead6c22ebb307ce32b310a12f1f4b8b564348"
         },
         {
           "path": "app/src/postprocessors/PhysicsFVMomentumBudget.C",
           "mode": "100644",
           "original_blob": null,
-          "blob": "ac97917c0e47615a3205a8c57fc7fb46c0d93b2a"
+          "blob": "175cf779d1d04e070a199396662633ed55450535"
         }
       ]
     },
@@ -1705,14 +1705,30 @@
       "baseline_comparison": "4 ULPs binary64 at field scale; exact direct transfer and frozen states remain required"
     },
     "fvm_physical_audit": {
-      "scope": "diagnostic overlay and accepted-state reconstructed steady RZ momentum budget; six endpoint velocity comparisons report-only conditional on strict other parity and numerical conservation; SCIENCE_HOLD",
+      "scope": "matched transient RZ momentum budget includes rho*velocity_dot + rho_dot*velocity; strict nonvelocity comparison and numerical conservation; SCIENCE_HOLD",
       "status": "PENDING_NATIVE_QUALIFICATION",
-      "previous_run": 46170997316,
+      "previous_run": 46172365196,
       "numerical_budget_rtol": 1e-8,
       "source_paths": [
         "app/include/postprocessors/PhysicsFVMomentumBudget.h",
         "app/src/postprocessors/PhysicsFVMomentumBudget.C"
       ]
+    },
+    "momentum_time_derivative": {
+      "status": "PENDING_NATIVE_QUALIFICATION",
+      "previous_steady_run": 46172365196,
+      "previous_steady_commit": "28f948299eb21b8b4581bd62474a3c5b4ec5b56c",
+      "previous_input_blob": "72d4690663c80f70391246800901f5782c3cc93c",
+      "kernel": "WCNSFVMomentumTimeDerivative",
+      "variables": [
+        "u",
+        "v"
+      ],
+      "rho": "rho_neutral",
+      "drho_dt": "drho_neutral_dt",
+      "scheme": "implicit-euler",
+      "comparison": "historical 8-block baseline input plus exact two canonical time kernels in temporary CI copy; no historical mutation",
+      "scope": "user-authorized momentum equation change; product-rule semi-discrete form; no exact finite-difference product identity claim; SCIENCE_HOLD"
     }
   }
 }
