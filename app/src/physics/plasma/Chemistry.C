@@ -1409,6 +1409,8 @@ Chemistry::validParams()
   params.addClassDescription(
       "Generates one source Functor per species and one electron-energy source "
       "from validated [Plasmas]/files reaction channels; explicit EI lookup progress is generated here.");
+  params.addParam<std::vector<std::string>>("neutral_target_aliases",
+      "Explicit chemistry:neutral-mixture target bindings for EI lookups.");
   return params;
 }
 
@@ -1435,6 +1437,44 @@ Chemistry::addFunctorMaterials()
     mooseError("Activated [Transport]/[Chemistry] requires reactions in [Plasmas]/files");
   std::map<std::string, SourceExpression> particle;
   SourceExpression energy;
+  std::map<std::string, std::string> aliases;
+  std::set<std::string> active_targets;
+  std::set<std::string> lookup_targets;
+  for (const auto & reaction : mechanism.reactions())
+    if (reaction.rate.model == "lookup")
+      lookup_targets.insert(reaction.rate.lookup_target);
+  const auto roots = _awh.getActions<PlasmasAction>();
+  const bool solved_mixture = roots.size() == 1 && roots.front()->isParamValid("neutral_species");
+  if (solved_mixture)
+  {
+    const auto & ids = roots.front()->getParam<std::vector<std::string>>("neutral_species");
+    active_targets.insert(ids.begin(), ids.end());
+  }
+  if (isParamValid("neutral_target_aliases"))
+  {
+    if (!solved_mixture)
+      paramError("neutral_target_aliases", "Explicit target aliases require the solved neutral mixture.");
+    for (const auto & entry : getParam<std::vector<std::string>>("neutral_target_aliases"))
+    {
+      const auto colon = entry.find(':');
+      if (colon == std::string::npos || colon == 0 || colon + 1 == entry.size() ||
+          entry.find(':', colon + 1) != std::string::npos)
+        paramError("neutral_target_aliases", "Expected chemistry:mixture species.");
+      const auto source = entry.substr(0, colon);
+      const auto target = entry.substr(colon + 1);
+      if (!lookup_targets.count(source) || active_targets.count(source) ||
+          !active_targets.count(target) || !aliases.emplace(source, target).second)
+        paramError("neutral_target_aliases", "Unknown, redundant or duplicate target alias: ", entry);
+      // Preserve identity: only the documented S6 O2(a1Delta)/O2s mapping
+      // is characterized; never silently redirect arbitrary chemistry.
+      if (source != "O2a" || target != "O2s")
+        paramError("neutral_target_aliases", "Unqualified chemistry/mixture species identity: ", entry);
+    }
+  }
+  if (solved_mixture)
+    for (const auto & target : lookup_targets)
+      if (!active_targets.count(target) && !aliases.count(target))
+        paramError("neutral_target_aliases", "Unbound EI target: ", target);
 
   // The shared mechanism merges reactions from every [Plasmas]/files entry.
   // For each reaction ID, generate an explicit EI lookup when requested and
@@ -1459,8 +1499,9 @@ Chemistry::addFunctorMaterials()
       params.set<FileName>("rate_table_file") = reaction.rate.table_file;
       params.set<MooseFunctorName>("mean_energy") = "e_energy_eV";
       params.set<MooseFunctorName>("electron_number_density") = "n_e_physical";
-      params.set<MooseFunctorName>("target_molar_concentration") =
-          "c_" + reaction.rate.lookup_target + "_molar";
+      const auto alias = aliases.find(reaction.rate.lookup_target);
+      const auto & target = alias == aliases.end() ? reaction.rate.lookup_target : alias->second;
+      params.set<MooseFunctorName>("target_molar_concentration") = "c_" + target + "_molar";
       params.set<std::string>("reaction_progress") = reaction.progress;
       assignBlocks(params, _blocks);
       getProblem().addFunctorMaterial(type, "chemistry_" + reaction.progress + "_lookup", params);

@@ -139,6 +139,12 @@
       "energy_loss_eV": {
         "model": "functor",
         "name": "delta_epsilon_EI02_eV"
+      },
+      "rate": {
+        "model": "lookup",
+        "file": "o2_elastic.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
       }
     },
     {
@@ -158,6 +164,12 @@
       "energy_loss_eV": {
         "model": "functor",
         "name": "delta_epsilon_EI17_eV"
+      },
+      "rate": {
+        "model": "lookup",
+        "file": "o_elastic.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
       }
     },
     {
@@ -174,7 +186,13 @@
         "archive_layer": "issue477_S2-415_generation_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 12.06
+      "energy_loss_eV": 12.06,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-415_O2_X.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     },
     {
       "id": "EI-401",
@@ -190,7 +208,13 @@
         "archive_layer": "issue477_S3-415-401_extra_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 0
+      "energy_loss_eV": 0,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-401_O2_X.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     },
     {
       "id": "EI-407",
@@ -207,7 +231,13 @@
         "alternate_archive_layer": "issue477_S5-941-407_o2_consumer_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 0.977
+      "energy_loss_eV": 0.977,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-407_O2_X.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     },
     {
       "id": "EI-2069",
@@ -224,7 +254,13 @@
         "alternate_archive_layer": "issue477_S6-941-407-2069-H25_EI2069_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 5.02
+      "energy_loss_eV": 5.02,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-2069_O2_a1Delta.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     },
     {
       "id": "H25",
@@ -260,7 +296,13 @@
         "archive_layer": "issue477_S4-401-417_op_ionization_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 17
+      "energy_loss_eV": 17,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-417_O2_X.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     }
   ],
   "ion_surface_current": {

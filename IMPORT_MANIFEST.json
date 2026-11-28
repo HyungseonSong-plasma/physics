@@ -1219,7 +1219,7 @@
       "source_path": "physics_app/src/physics/plasma/Chemistry.C",
       "path": "app/src/physics/plasma/Chemistry.C",
       "mode": "100644",
-      "blob": "b11a022ea149b63610cfafb3f770bbbcfaddab8e"
+      "blob": "43c69ed13dc923a5839df80afce0259cf721f5fe"
     },
     {
       "source_path": "physics_app/src/physics/plasma/DDContinuityEq.C",
@@ -1491,14 +1491,14 @@
   },
   "new_only_assets": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "stage": "P4_CANDIDATE_NEUTRAL_TRANSPORT_PDE_BC",
+    "stage": "P5_CANDIDATE_CHEMISTRY_EI_LOOKUP",
     "candidate_blobs": {
-      "assets/input.i": "f3556f3f2bdab3a2aff5a06089eca34eedb3e4ca",
+      "assets/input.i": "f39912c1635c19f9ab642ca0d196b4c0a2eabe4f",
       "assets/maxwell.i": "c317fbbb7a55eee52a22e65db7e6349c54f0cebd",
-      "assets/chemistry.json": "9cfdfa2286dae1c4d1a6cb5bd85fb8b086b1f010",
+      "assets/chemistry.json": "855eb3631d175e6046d18cc1a654a7ae60028726",
       "assets/neutral_transport_aliases.txt": "98075edf56cbe7d3b5e96c531efe74277ffc0a37"
     },
-    "retained": "Native neutral variables, Rhie-Chow, viscosity and geometry area, chemical reaction source kernels, EI/elastic and RF coil sources; historical A/B table retained.",
+    "retained": "Native elastic energy loss, reaction diagnostics and neutral reaction source kernels; H25, RF coil source; historical A/B table.",
     "science": "SCIENCE_HOLD",
     "source_delta": [
       {
@@ -1524,6 +1524,12 @@
         "prior_blob": "445b85975ddb31e6acf2f02d2bd2cbcfbd7619e0",
         "candidate_blob": "fbc0b19a904b1c709bdf3e9c833f24142763a852",
         "reason": "Opt-in RZ neutral conservation and conservative WCNS BC generation with existing numerical operators."
+      },
+      {
+        "path": "app/src/physics/plasma/Chemistry.C",
+        "prior_blob": "b11a022ea149b63610cfafb3f770bbbcfaddab8e",
+        "candidate_blob": "43c69ed13dc923a5839df80afce0259cf721f5fe",
+        "reason": "Explicit validated O2a:O2s lookup binding, preserve native reaction IDs/tables."
       }
     ],
     "alias_projection": {

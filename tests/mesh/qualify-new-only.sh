@@ -107,6 +107,21 @@ set -e
 test "$rc" -ne 0 && test "$rc" -ne 124
 grep -q "Neutral inlet, walls and outlet must not overlap" "$ev/flow-negative.log"
 echo NEUTRAL_FLOW_BOUNDARY_NEGATIVE_PASS
+# Reject missing or wrong chemistry-to-mixture target mapping.
+badei="$RUNNER_TEMP/flat-ei-negative"
+mkdir "$badei"; cp -a assets "$badei/assets"
+sed -i "/neutral_target_aliases = /d" "$badei/assets/input.i"
+set +e
+timeout 480 docker run --rm "${opts[@]}" -v "$badei:/case" "$BASE_IMAGE" -lc '
+  source /environment
+  export LD_LIBRARY_PATH=/workspace/app/test/lib:/workspace/app/lib:${LD_LIBRARY_PATH:-}
+  exec /workspace/app/physics-opt "$@"
+' physics-opt --check-input -i assets/input.i >"$ev/ei-negative.log" 2>&1
+rc=$?
+set -e
+test "$rc" -ne 0 && test "$rc" -ne 124
+grep -q "Unbound EI target" "$ev/ei-negative.log"
+echo EI_TARGET_ALIAS_NEGATIVE_PASS
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
 if test "${#kinds[@]}" -eq 2; then
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/compare-unified.py /evidence'
@@ -117,6 +132,14 @@ import json, pathlib, sys
 p=pathlib.Path(sys.argv[1])/"mesh-physics-comparison.json"
 j=json.loads(p.read_text())
 print(json.dumps({"status":"NEUTRAL_FLOW_COMPARISON_MEASURED","scalars":{k:v for k,v in j["scalars"].items() if k.startswith(("neutral_","w_O"))},"fields":{k:v for k,v in j["fields"].items() if k in ("pressure","u","v","w_O2s","w_O","w_Os")}},sort_keys=True))
+PY
+# Preserve all existing reaction diagnostics and compare their values.
+python3 - "$ev" <<'PY'
+import json,pathlib,sys
+j=json.loads((pathlib.Path(sys.argv[1])/"mesh-physics-comparison.json").read_text())
+keys={k:v for k,v in j["scalars"].items() if any(s in k.lower() for s in ("ei02","ei17","ei415","ei401","ei417","ei407","ei2069","h25"))}
+assert keys,"No reaction diagnostics"
+print(json.dumps({"status":"EI_RATE_COMPARISON_MEASURED","scalars":keys},sort_keys=True))
 PY
 # Only publish after the native and field gates pass.
 mkdir -p "$RUNNER_TEMP/physics-exodus"

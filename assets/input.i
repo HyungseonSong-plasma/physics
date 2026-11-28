@@ -229,23 +229,6 @@
 
 
 
-  [ei02_o2_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI02
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032000000000000001'
-    block = plasma
-  []
-  [ei02_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = o2_elastic.txt
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI02
-    reaction_progress = R_EI02
-    block = plasma
-  []
   [ei02_delta_e]
     type = ADParsedFunctorMaterial
     property_name = delta_epsilon_EI02_eV
@@ -262,23 +245,6 @@
     expression = '-de*R'
     block = plasma
   []
-  [ei17_o_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O_EI17
-    functor_names = 'rho_neutral w_O'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.016'
-    block = plasma
-  []
-  [ei17_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = o_elastic.txt
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O_EI17
-    reaction_progress = R_EI17
-    block = plasma
-  []
   [ei17_delta_energy]
     type = ADParsedFunctorMaterial
     property_name = delta_epsilon_EI17_eV
@@ -293,23 +259,6 @@
     functor_names = 'delta_epsilon_EI17_eV R_EI17'
     functor_symbols = 'de R'
     expression = '-de*R'
-    block = plasma
-  []
-  [ei415_o2_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI415
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032000000000000001'
-    block = plasma
-  []
-  [ei415_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-415_O2_X.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI415
-    reaction_progress = R_EI415
     block = plasma
   []
   [ei415_electron_source]
@@ -366,23 +315,6 @@
     functor_names = 'S_electron_molar_EI415 S_O2p_molar_EI415'
     functor_symbols = 'Se Si'
     expression = 'Si-Se'
-    block = plasma
-  []
-  [ei401_o2_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI401
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032000000000000001'
-    block = plasma
-  []
-  [ei401_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-401_O2_X.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI401
-    reaction_progress = R_EI401
     block = plasma
   []
   [ei401_electron_source]
@@ -447,23 +379,6 @@
     functor_names = 'S_electron_molar_EI401 S_Om_molar_EI401'
     functor_symbols = 'Se Som'
     expression = 'Se+Som'
-    block = plasma
-  []
-  [legacy8_h05_ei417_o2_target]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI417
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032'
-    block = plasma
-  []
-  [legacy8_h05_ei417_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-417_O2_X.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI417
-    reaction_progress = R_EI417
     block = plasma
   []
   [legacy8_h05_ei417_electron_source]
@@ -546,23 +461,6 @@
     expression = 'op-el'
     block = plasma
   []
-  [legacy8_407_o2_target]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI407
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032'
-    block = plasma
-  []
-  [legacy8_407_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-407_O2_X.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI407
-    reaction_progress = R_EI407
-    block = plasma
-  []
   [legacy8_407_o2s_mass]
     type = ADParsedFunctorMaterial
     property_name = S_O2s_mass_EI407
@@ -593,23 +491,6 @@
     functor_names = 'S_O2s_mass_EI407 S_O2_implicit_EI407'
     functor_symbols = 'a b'
     expression = 'a+b'
-    block = plasma
-  []
-  [ei2069_o2a_molar_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2a_EI2069
-    functor_names = 'rho_neutral w_O2s'
-    functor_symbols = 'rho wa'
-    expression = 'rho*wa/0.032'
-    block = plasma
-  []
-  [ei2069_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-2069_O2_a1Delta.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2a_EI2069
-    reaction_progress = R_EI2069
     block = plasma
   []
   [ei2069_o2a_mass_sink]
@@ -2069,6 +1950,7 @@ faraday_t6 = 96485.33212331001
       []
       [Chemistry]
         block = plasma
+        neutral_target_aliases = 'O2a:O2s'
       []
       [DriftDiffusion]
         [Continuity]
