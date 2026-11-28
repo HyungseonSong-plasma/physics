@@ -59,7 +59,9 @@ BoundaryGradientProbe::computeFaceInfoIntegral(const FaceInfo * fi)
   const Real jump = MetaPhysicL::raw_value(_fv->getBoundaryFaceValue(*fi, state, false) -
                                           _fv->getElemValue(_current_elem, state));
   const RealVectorValue corrected = cell + (jump / distance - cell * e) * e;
-  const RealVectorValue outward = owner ? fi->normal() : -fi->normal();
+  RealVectorValue outward = fi->normal();
+  if (!owner)
+    outward *= -1.0;
   if (_metric == "native_error") return (native - exact).norm();
   if (_metric == "corrected_error") return (corrected - exact).norm();
   if (_metric == "cell_error") return (cell - exact).norm();
