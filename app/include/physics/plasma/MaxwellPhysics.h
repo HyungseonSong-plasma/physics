@@ -6,7 +6,7 @@ namespace Plasma
 {
 
 /**
- * Validates existing maxwell simulation inputs without adding solver objects.
+ * Generates opt-in RF operators, grounded boundaries and driven coil sources.
  */
 class MaxwellPhysics : public PlasmaInterface
 {
@@ -15,6 +15,12 @@ public:
   explicit MaxwellPhysics(const InputParameters & parameters);
 
 private:
+  bool physicalCoils() const;
+  bool ownsOperators() const;
+  Real angularFrequency() const;
+  void addSolverVariables() override;
+  void addFunctions() override;
+  void addMaterials() override;
   void checkIntegrity() const override;
   void addFEKernels() override;
   void addFEBCs() override;

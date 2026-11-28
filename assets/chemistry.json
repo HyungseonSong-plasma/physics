@@ -137,8 +137,16 @@
       },
       "units": "mol/(m^3 s)",
       "energy_loss_eV": {
-        "model": "functor",
-        "name": "delta_epsilon_EI02_eV"
+        "model": "elastic",
+        "exchange_factor": 0.000051429366456827657,
+        "kb_eV_K": 0.00008617333262145,
+        "diagnostic_source": "elastic_energy_source_EI02"
+      },
+      "rate": {
+        "model": "lookup",
+        "file": "o2_elastic.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
       }
     },
     {
@@ -156,8 +164,16 @@
       },
       "units": "mol/(m^3 s)",
       "energy_loss_eV": {
-        "model": "functor",
-        "name": "delta_epsilon_EI17_eV"
+        "model": "elastic",
+        "exchange_factor": 0.00010285873291365531,
+        "kb_eV_K": 0.00008617333262145,
+        "diagnostic_source": "S_electron_energy_EI17"
+      },
+      "rate": {
+        "model": "lookup",
+        "file": "o_elastic.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
       }
     },
     {
@@ -174,7 +190,13 @@
         "archive_layer": "issue477_S2-415_generation_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 12.06
+      "energy_loss_eV": 12.06,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-415_O2_X.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     },
     {
       "id": "EI-401",
@@ -190,7 +212,13 @@
         "archive_layer": "issue477_S3-415-401_extra_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 0
+      "energy_loss_eV": 0,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-401_O2_X.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     },
     {
       "id": "EI-407",
@@ -207,7 +235,13 @@
         "alternate_archive_layer": "issue477_S5-941-407_o2_consumer_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 0.977
+      "energy_loss_eV": 0.977,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-407_O2_X.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     },
     {
       "id": "EI-2069",
@@ -224,7 +258,13 @@
         "alternate_archive_layer": "issue477_S6-941-407-2069-H25_EI2069_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 5.02
+      "energy_loss_eV": 5.02,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-2069_O2_a1Delta.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     },
     {
       "id": "H25",
@@ -260,7 +300,13 @@
         "archive_layer": "issue477_S4-401-417_op_ionization_overlay.i"
       },
       "units": "mol/(m^3 s)",
-      "energy_loss_eV": 17
+      "energy_loss_eV": 17,
+      "rate": {
+        "model": "lookup",
+        "file": "EI-417_O2_X.txt",
+        "basis": "molar",
+        "bounds_policy": "strict"
+      }
     }
   ],
   "ion_surface_current": {
@@ -344,6 +390,38 @@
       },
       "Op_focus_ring_dielectric": {
         "type": "FVLogMolarDielectricFluxBC"
+      }
+    }
+  },
+  "poisson": {
+    "relative_permittivity": {
+      "plasma": 1,
+      "cover": 3.6,
+      "wafer": 12.5,
+      "focus_ring": 8,
+      "vacuum": 1,
+      "coil1": 1,
+      "coil2": 1,
+      "coil3": 1
+    },
+    "boundaries": {
+      "ground": [
+        "inlet",
+        "outlet",
+        "plasma_electrode",
+        "plasma_metal",
+        "plasma_right",
+        "cover_outer_right",
+        "wafer_electrode",
+        "focus_ring_ground",
+        "vacuum_outer_ground",
+        "cover_coil_ground",
+        "vacuum_coil_ground"
+      ],
+      "surface_charge": {
+        "plasma_cover": "sigma_s",
+        "plasma_wafer": "sigma_wafer",
+        "plasma_focus_ring": "sigma_focus_ring"
       }
     }
   }

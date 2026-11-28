@@ -4,31 +4,11 @@
 #   E(t) = Re{ E_hat exp(+i omega t) }
 #   Q_RF = 0.5 * sigma_R * |E_hat|^2
 #
-# This is a prescribed-material validation case. It is not the final oxygen
-# plasma constitutive model and does not include copper skin/proximity physics.
+# Live plasma conductivity is retained; copper skin/proximity effects are not modeled.
 
-mu0 = 1.2566370614359173e-6
-eps0 = 8.8541878128e-12
-frequency = 13.56e6
+# Derived angular frequency for the existing live conductivity closure.
+frequency = ${Physics/Plasmas/Maxwell/frequency_Hz}
 omega = '${fparse 2*3.141592653589793*frequency}'
-omega_mu0 = '${fparse omega*mu0}'
-wave_k2 = '${fparse omega*omega*mu0*eps0}'
-
-plasma_sigma_real = 5.0
-plasma_sigma_imag = -10.0
-plasma_eps_r = 1.0
-cover_eps_r = 3.6
-wafer_eps_r = 12.5
-focus_eps_r = 8.0
-b_plasma = '${fparse omega_mu0*plasma_sigma_real}'
-
-I_peak = 10.0
-source_scale = 1.0
-coil_dr = 0.009
-coil_dz = 0.018
-coil_area = '${fparse coil_dr*coil_dz}'
-J_coil = '${fparse I_peak/coil_area}'
-source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
 
 [Mesh]
   coord_type = RZ
@@ -72,115 +52,8 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
   []
 []
 
-[Variables]
-  [E_real]
-    order = FIRST
-    family = LAGRANGE
-  []
-  [E_imag]
-    order = FIRST
-    family = LAGRANGE
-  []
-[]
-
-[Functions]
-  [zero_fn]
-    type = ConstantFunction
-    value = 0
-  []
-  [b_plasma_fn]
-    type = ConstantFunction
-    value = ${b_plasma}
-  []
-  [neg_a_vac_fn]
-    type = ParsedFunction
-    expression = '-(1/(x*x) - k2)'
-    symbol_names = 'k2'
-    symbol_values = '${wave_k2}'
-  []
-  [neg_a_plasma_fn]
-    type = ParsedFunction
-    expression = '-(1/(x*x) - k2*epsr - ommu*sigma_i)'
-    symbol_names = 'k2 epsr ommu sigma_i'
-    symbol_values = '${wave_k2} ${plasma_eps_r} ${omega_mu0} ${plasma_sigma_imag}'
-  []
-  [neg_a_cover_fn]
-    type = ParsedFunction
-    expression = '-(1/(x*x) - k2*epsr)'
-    symbol_names = 'k2 epsr'
-    symbol_values = '${wave_k2} ${cover_eps_r}'
-  []
-  [neg_a_wafer_fn]
-    type = ParsedFunction
-    expression = '-(1/(x*x) - k2*epsr)'
-    symbol_names = 'k2 epsr'
-    symbol_values = '${wave_k2} ${wafer_eps_r}'
-  []
-  [neg_a_focus_fn]
-    type = ParsedFunction
-    expression = '-(1/(x*x) - k2*epsr)'
-    symbol_names = 'k2 epsr'
-    symbol_values = '${wave_k2} ${focus_eps_r}'
-  []
-  active = 'zero_fn neg_a_vac_fn neg_a_cover_fn neg_a_wafer_fn neg_a_focus_fn neg_a_plasma_geom_t6'
-  [neg_a_plasma_geom_t6]
-    type = ParsedFunction
-    expression = '-(1/(x*x) - k2*epsr)'
-    symbol_names = 'k2 epsr'
-    symbol_values = '${wave_k2} ${plasma_eps_r}'
-  []
-[]
-
 [Materials]
-  [vacuum_like]
-    type = GenericFunctionMaterial
-    prop_names = 'neg_a b'
-    prop_values = 'neg_a_vac_fn zero_fn'
-    block = 'vacuum metal electrode top right bottom port coil1 coil2 coil3'
-  []
-  [plasma]
-    type = GenericFunctionMaterial
-    prop_names = 'neg_a b'
-    prop_values = 'neg_a_plasma_fn b_plasma_fn'
-    block = plasma
-  []
-  [cover]
-    type = GenericFunctionMaterial
-    prop_names = 'neg_a b'
-    prop_values = 'neg_a_cover_fn zero_fn'
-    block = cover
-  []
-  [wafer]
-    type = GenericFunctionMaterial
-    prop_names = 'neg_a b'
-    prop_values = 'neg_a_wafer_fn zero_fn'
-    block = wafer
-  []
-  [focus_ring]
-    type = GenericFunctionMaterial
-    prop_names = 'neg_a b'
-    prop_values = 'neg_a_focus_fn zero_fn'
-    block = focus_ring
-  []
 
-  # Peak-phasor collisional RF heating density [W/m^3]. sigma_I does not
-  # appear explicitly: it changes the field reactively but is not dissipative.
-  [rf_power_density]
-    type = ParsedMaterial
-    property_name = q_rf
-    coupled_variables = 'E_real E_imag'
-    constant_names = 'sigma_r'
-    constant_expressions = '${plasma_sigma_real}'
-    expression = '0.5*sigma_r*(E_real^2 + E_imag^2)'
-    block = plasma
-  []
-  active = 'vacuum_like cover wafer focus_ring plasma_geom_t6 muN_t6 sigma_real_t6 sigma_imag_t6 plasma_neg_a_t6 plasma_b_t6 rf_power_density_t6'
-  [plasma_geom_t6]
-    type = GenericFunctionMaterial
-    prop_names = 'neg_a_geom_t6'
-    prop_values = 'neg_a_plasma_geom_t6'
-    block = plasma
-  []
   [muN_t6]
     type = PiecewiseLinearInterpolationMaterial
     property = muN_t6
@@ -209,24 +82,6 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
     expression = '-(electron_density_state_t6*qe^2*om)/(me*((qe/(me*(muN_t6/(pressure_state_t6/(kb*Tg)))))^2+om^2))'
     block = plasma
   []
-  [plasma_neg_a_t6]
-    type = ParsedMaterial
-    property_name = neg_a
-    material_property_names = 'neg_a_geom_t6 sigma_imag_t6'
-    constant_names = 'ommu'
-    constant_expressions = '${omega_mu0}'
-    expression = 'neg_a_geom_t6 + ommu*sigma_imag_t6'
-    block = plasma
-  []
-  [plasma_b_t6]
-    type = ParsedMaterial
-    property_name = b
-    material_property_names = 'sigma_real_t6'
-    constant_names = 'ommu'
-    constant_expressions = '${omega_mu0}'
-    expression = 'ommu*sigma_real_t6'
-    block = plasma
-  []
   [rf_power_density_t6]
     type = ParsedMaterial
     property_name = q_rf
@@ -237,88 +92,7 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
   []
 []
 
-[Kernels]
-  [E_real_diffusion]
-    type = Diffusion
-    variable = E_real
-  []
-  [E_imag_diffusion]
-    type = Diffusion
-    variable = E_imag
-  []
-  [E_real_reaction]
-    type = MatReaction
-    variable = E_real
-    reaction_rate = neg_a
-  []
-  [E_imag_reaction]
-    type = MatReaction
-    variable = E_imag
-    reaction_rate = neg_a
-  []
-  [E_real_sigma_coupling]
-    type = MatCoupledForce
-    variable = E_real
-    v = 'E_imag'
-    coef = '1'
-    material_properties = 'b'
-  []
-  [E_imag_sigma_coupling]
-    type = MatCoupledForce
-    variable = E_imag
-    v = 'E_real'
-    coef = '-1'
-    material_properties = 'b'
-  []
-  [coil1_current]
-    type = BodyForce
-    variable = E_imag
-    block = coil1
-    value = ${source_imag}
-    postprocessor = rf_drive_scale_child
-  []
-  [coil2_current]
-    type = BodyForce
-    variable = E_imag
-    block = coil2
-    value = ${source_imag}
-    postprocessor = rf_drive_scale_child
-  []
-  [coil3_current]
-    type = BodyForce
-    variable = E_imag
-    block = coil3
-    value = ${source_imag}
-    postprocessor = rf_drive_scale_child
-  []
-[]
 
-[BCs]
-  [axis_real]
-    type = DirichletBC
-    variable = E_real
-    boundary = axis
-    value = 0
-  []
-  [axis_imag]
-    type = DirichletBC
-    variable = E_imag
-    boundary = axis
-    value = 0
-  []
-  [wall_real]
-    type = DirichletBC
-    variable = E_real
-    boundary = 'outer_right outer_bottom outer_top'
-    value = 0
-  []
-  [wall_imag]
-    type = DirichletBC
-    variable = E_imag
-    boundary = 'outer_right outer_bottom outer_top'
-    value = 0
-  []
-[]
 
 [Postprocessors]
   [E_real_l2]
@@ -381,5 +155,21 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
     order = CONSTANT
     block = plasma
     initial_condition = 1.3322
+  []
+[]
+# Action owns RF operators, grounded boundaries and the three driven coil sources.
+[Physics]
+  [Plasmas]
+    [Maxwell]
+      frequency_Hz = 13.56e6
+      coil_blocks = 'coil1 coil2 coil3'
+      coil_current_A = 10.0
+      coil_cross_section_m2 = 0.000162
+      plasma_blocks = plasma
+      vacuum_blocks = 'vacuum metal electrode top right bottom port coil1 coil2 coil3'
+      dielectric_blocks = 'cover wafer focus_ring'
+      relative_permittivities = '3.6 12.5 8.0'
+      ground_boundaries = 'axis outer_right outer_bottom outer_top'
+    []
   []
 []

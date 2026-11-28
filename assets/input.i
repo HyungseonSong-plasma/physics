@@ -62,7 +62,6 @@
 []
 
 [GlobalParams]
-  rhie_chow_user_object = rc
   advected_interp_method = upwind
   velocity_interp_method = rc
   two_term_boundary_expansion = true
@@ -95,17 +94,14 @@
   []
   [w_O2s]
     type = INSFVScalarFieldVariable
-    initial_condition = 1.000010000100001e-05
     block = plasma
   []
   [w_O]
     type = INSFVScalarFieldVariable
-    initial_condition = 5.0000500005000049e-06
     block = plasma
   []
   [w_Os]
     type = INSFVScalarFieldVariable
-    initial_condition = 5.0000500005000049e-06
     block = plasma
   []
   [potential]
@@ -213,30 +209,6 @@
     expression = '6.02214076e23*we'
     block = plasma
   []
-  [charge_number_density]
-    type = ADParsedFunctorMaterial
-    property_name = charge_number_density
-    functor_names = 'n_i_physical n_op_physical n_e_physical n_m_physical'
-    functor_symbols = 'ni nop ne nm'
-    expression = 'ni+nop-ne-nm'
-    block = plasma
-  []
-  [charge_density]
-    type = ADParsedFunctorMaterial
-    property_name = charge_density_C_m3
-    functor_names = 'charge_number_density'
-    functor_symbols = 'nq'
-    expression = '1.602176634e-19*nq'
-    block = plasma
-  []
-  [poisson_source]
-    type = ADParsedFunctorMaterial
-    property_name = poisson_source
-    functor_names = 'charge_number_density'
-    functor_symbols = 'nq'
-    expression = '1.8095128179727827e-08*nq'
-    block = plasma
-  []
 
   [neutral_flow_constants]
     type = ADGenericFunctorMaterial
@@ -245,199 +217,17 @@
     block = plasma
   []
 
-  [neutral_state_dot_aliases]
-    type = ADGenericFunctorMaterial
-    prop_names = 'p_state wO_state wOs_state'
-    prop_values = 'pressure w_O w_Os'
-    define_dot_functors = true
-    block = plasma
-  []
 
-  [neutral_O2_constraint]
-    type = ADParsedFunctorMaterial
-    property_name = w_O2_constraint
-    functor_names = 'w_O2s w_O w_Os'
-    functor_symbols = 's o a'
-    expression = '1.0-s-o-a'
-    block = plasma
-  []
 
-  [neutral_mean_molar_mass]
-    type = ADParsedFunctorMaterial
-    property_name = Mn_neutral
-    functor_names = 'w_O2_constraint w_O2s w_O w_Os'
-    functor_symbols = 'm0 m1 m2 m3'
-    expression = '1.0/(m0/0.032+m1/0.032+m2/0.016+m3/0.016)'
-    block = plasma
-  []
 
-  [neutral_density]
-    type = ADParsedFunctorMaterial
-    property_name = rho_neutral
-    functor_names = 'pressure Mn_neutral temperature'
-    functor_symbols = 'prs mol tmp'
-    expression = 'prs*mol/(8.31446*tmp)'
-    block = plasma
-  []
 
   # A = w_O + w_O*. Molecular redistribution O2 <-> O2* leaves Mn unchanged.
   # Mn = 0.032/(1+A), hence dMn/dt = -31.25*Mn^2*dA/dt.
-  [neutral_mean_molar_mass_dot]
-    type = ADParsedFunctorMaterial
-    property_name = dMn_neutral_dt
-    functor_names = 'Mn_neutral dwO_state_dt dwOs_state_dt'
-    functor_symbols = 'mn dwo dwos'
-    expression = '-31.25*mn*mn*(dwo+dwos)'
-    block = plasma
-  []
 
   # Isothermal Stage-B flow: rho = pressure*Mn/(R*Tg).
-  [neutral_density_dot]
-    type = ADParsedFunctorMaterial
-    property_name = drho_neutral_dt
-    functor_names = 'pressure Mn_neutral dp_state_dt dMn_neutral_dt temperature'
-    functor_symbols = 'prs mn dp dmn tmp'
-    expression = '(mn*dp+prs*dmn)/(8.31446*tmp)'
-    block = plasma
-  []
 
-  [neutral_sum_w]
-    type = ADParsedFunctorMaterial
-    property_name = neutral_sum_w_functor
-    functor_names = 'w_O2_constraint w_O2s w_O w_Os'
-    functor_symbols = 'q0 q1 q2 q3'
-    expression = 'q0+q1+q2+q3'
-    block = plasma
-  []
 
-  [rho_w_O2]
-    type = ADParsedFunctorMaterial
-    property_name = rho_w_O2
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w'
-    block = plasma
-  []
-  [rho_w_O2s]
-    type = ADParsedFunctorMaterial
-    property_name = rho_w_O2s
-    functor_names = 'rho_neutral w_O2s'
-    functor_symbols = 'rho w'
-    expression = 'rho*w'
-    block = plasma
-  []
-  [rho_w_O]
-    type = ADParsedFunctorMaterial
-    property_name = rho_w_O
-    functor_names = 'rho_neutral w_O'
-    functor_symbols = 'rho w'
-    expression = 'rho*w'
-    block = plasma
-  []
-  [rho_w_Os]
-    type = ADParsedFunctorMaterial
-    property_name = rho_w_Os
-    functor_names = 'rho_neutral w_Os'
-    functor_symbols = 'rho w'
-    expression = 'rho*w'
-    block = plasma
-  []
 
-  [neutral_transport]
-    type = NVTransportMaterial
-    temperature = temperature
-    pressure = pressure
-    transport_data_file = 'neutral_transport.txt'
-    species = 'O2 O2s O Os'
-    mass_fractions = 'w_O2_constraint w_O2s w_O w_Os'
-    D_mix_names = 'D_mix_O2 D_mix_O2s D_mix_O D_mix_Os'
-    D_T_names = 'D_T_O2 D_T_O2s D_T_O D_T_Os'
-    kT_names = 'kT_O2 kT_O2s kT_O kT_Os'
-    block = plasma
-  []
-  [ei02_o2_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI02
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032000000000000001'
-    block = plasma
-  []
-  [ei02_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = o2_elastic.txt
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI02
-    reaction_progress = R_EI02
-    block = plasma
-  []
-  [ei02_delta_e]
-    type = ADParsedFunctorMaterial
-    property_name = delta_epsilon_EI02_eV
-    functor_names = 'e_energy_eV temperature'
-    functor_symbols = 'eps Tg'
-    expression = '5.1429366456827657e-05*((2.0/3.0)*eps-8.6173332621449999e-05*Tg)'
-    block = plasma
-  []
-  [ei02_energy_source]
-    type = ADParsedFunctorMaterial
-    property_name = elastic_energy_source_EI02
-    functor_names = 'delta_epsilon_EI02_eV R_EI02'
-    functor_symbols = 'de R'
-    expression = '-de*R'
-    block = plasma
-  []
-  [ei17_o_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O_EI17
-    functor_names = 'rho_neutral w_O'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.016'
-    block = plasma
-  []
-  [ei17_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = o_elastic.txt
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O_EI17
-    reaction_progress = R_EI17
-    block = plasma
-  []
-  [ei17_delta_energy]
-    type = ADParsedFunctorMaterial
-    property_name = delta_epsilon_EI17_eV
-    functor_names = 'e_energy_eV temperature'
-    functor_symbols = 'eps Tg'
-    expression = '0.00010285873291365531*((2.0/3.0)*eps-8.6173332621449999e-05*Tg)'
-    block = plasma
-  []
-  [ei17_electron_energy_exchange]
-    type = ADParsedFunctorMaterial
-    property_name = S_electron_energy_EI17
-    functor_names = 'delta_epsilon_EI17_eV R_EI17'
-    functor_symbols = 'de R'
-    expression = '-de*R'
-    block = plasma
-  []
-  [ei415_o2_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI415
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032000000000000001'
-    block = plasma
-  []
-  [ei415_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-415_O2_X.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI415
-    reaction_progress = R_EI415
-    block = plasma
-  []
   [ei415_electron_source]
     type = ADParsedFunctorMaterial
     property_name = S_electron_molar_EI415
@@ -492,23 +282,6 @@
     functor_names = 'S_electron_molar_EI415 S_O2p_molar_EI415'
     functor_symbols = 'Se Si'
     expression = 'Si-Se'
-    block = plasma
-  []
-  [ei401_o2_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI401
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032000000000000001'
-    block = plasma
-  []
-  [ei401_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-401_O2_X.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI401
-    reaction_progress = R_EI401
     block = plasma
   []
   [ei401_electron_source]
@@ -573,23 +346,6 @@
     functor_names = 'S_electron_molar_EI401 S_Om_molar_EI401'
     functor_symbols = 'Se Som'
     expression = 'Se+Som'
-    block = plasma
-  []
-  [legacy8_h05_ei417_o2_target]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI417
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032'
-    block = plasma
-  []
-  [legacy8_h05_ei417_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-417_O2_X.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI417
-    reaction_progress = R_EI417
     block = plasma
   []
   [legacy8_h05_ei417_electron_source]
@@ -672,23 +428,6 @@
     expression = 'op-el'
     block = plasma
   []
-  [legacy8_407_o2_target]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2_EI407
-    functor_names = 'rho_neutral w_O2_constraint'
-    functor_symbols = 'rho w'
-    expression = 'rho*w/0.032'
-    block = plasma
-  []
-  [legacy8_407_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-407_O2_X.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2_EI407
-    reaction_progress = R_EI407
-    block = plasma
-  []
   [legacy8_407_o2s_mass]
     type = ADParsedFunctorMaterial
     property_name = S_O2s_mass_EI407
@@ -719,23 +458,6 @@
     functor_names = 'S_O2s_mass_EI407 S_O2_implicit_EI407'
     functor_symbols = 'a b'
     expression = 'a+b'
-    block = plasma
-  []
-  [ei2069_o2a_molar_concentration]
-    type = ADParsedFunctorMaterial
-    property_name = c_O2a_EI2069
-    functor_names = 'rho_neutral w_O2s'
-    functor_symbols = 'rho wa'
-    expression = 'rho*wa/0.032'
-    block = plasma
-  []
-  [ei2069_progress]
-    type = EIRateCoefMaterial
-    rate_table_file = 'EI-2069_O2_a1Delta.txt'
-    mean_energy = e_energy_eV
-    electron_number_density = n_e_physical
-    target_molar_concentration = c_O2a_EI2069
-    reaction_progress = R_EI2069
     block = plasma
   []
   [ei2069_o2a_mass_sink]
@@ -875,36 +597,6 @@
 []
 
 [Materials]
-  [eps_plasma]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '1.0'
-    block = plasma
-  []
-  [eps_cover]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '3.6'
-    block = cover
-  []
-  [eps_wafer]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '12.5'
-    block = wafer
-  []
-  [eps_focus_ring]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '8.0'
-    block = focus_ring
-  []
-  [eps_vacuum]
-    type = ADGenericConstantMaterial
-    prop_names = 'relative_permittivity'
-    prop_values = '1.0'
-    block = 'vacuum coil1 coil2 coil3'
-  []
   [cover_surface_anchor]
     type = ADGenericConstantMaterial
     prop_names = 'cover_surface_anchor'
@@ -972,19 +664,6 @@
 []
 
 [Kernels]
-  [phi_diffusion]
-    type = ADMatDiffusion
-    variable = potential
-    diffusivity = relative_permittivity
-    block = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3'
-  []
-  [phi_source]
-    type = FunctorKernel
-    variable = potential
-    functor = poisson_source
-    functor_on_rhs = true
-    block = plasma
-  []
   [sigma_time]
     type = ADTimeDerivative
     variable = sigma_s
@@ -1027,134 +706,10 @@
 []
 
 [FVKernels]
-  [neutral_mass_time]
-    type = WCNSFVMassTimeDerivative
-    variable = pressure
-    drho_dt = drho_neutral_dt
-    block = plasma
-  []
-  [neutral_mass_advection]
-    type = INSFVMassAdvection
-    variable = pressure
-    rho = rho_neutral
-    block = plasma
-  []
 
-  [u_advection]
-    type = INSFVMomentumAdvection
-    variable = u
-    rho = rho_neutral
-    momentum_component = x
-    block = plasma
-  []
-  [u_diffusion]
-    type = INSFVMomentumDiffusion
-    variable = u
-    mu = mu_flow
-    momentum_component = x
-    block = plasma
-  []
-  [u_pressure]
-    type = INSFVMomentumPressure
-    variable = u
-    pressure = pressure
-    momentum_component = x
-    block = plasma
-  []
-  [v_advection]
-    type = INSFVMomentumAdvection
-    variable = v
-    rho = rho_neutral
-    momentum_component = y
-    block = plasma
-  []
-  [v_diffusion]
-    type = INSFVMomentumDiffusion
-    variable = v
-    mu = mu_flow
-    momentum_component = y
-    block = plasma
-  []
-  [v_pressure]
-    type = INSFVMomentumPressure
-    variable = v
-    pressure = pressure
-    momentum_component = y
-    block = plasma
-  []
-  [u_rz_viscous_source]
-    type = INSFVMomentumViscousSourceRZ
-    variable = u
-    mu = mu_flow
-    momentum_component = x
-    block = plasma
-  []
 
-  [O2s_time]
-    type = PhysicsFVConservativeMassFractionTimeDerivative
-    variable = w_O2s
-    rho = rho_neutral
-    block = plasma
-  []
-  [O2s_advection]
-    type = PhysicsFVMassFractionAdvection
-    variable = w_O2s
-    rho = rho_neutral
-    block = plasma
-  []
-  [O2s_diffusion]
-    type = PhysicsFVMixtureAveragedDiffusion
-    variable = w_O2s
-    rho = rho_neutral
-    diffusivity = D_mix_O2s
-    mean_molar_mass = Mn_neutral
-    include_molar_mass_gradient = true
-    block = plasma
-  []
 
-  [O_time]
-    type = PhysicsFVConservativeMassFractionTimeDerivative
-    variable = w_O
-    rho = rho_neutral
-    block = plasma
-  []
-  [O_advection]
-    type = PhysicsFVMassFractionAdvection
-    variable = w_O
-    rho = rho_neutral
-    block = plasma
-  []
-  [O_diffusion]
-    type = PhysicsFVMixtureAveragedDiffusion
-    variable = w_O
-    rho = rho_neutral
-    diffusivity = D_mix_O
-    mean_molar_mass = Mn_neutral
-    include_molar_mass_gradient = true
-    block = plasma
-  []
 
-  [Os_time]
-    type = PhysicsFVConservativeMassFractionTimeDerivative
-    variable = w_Os
-    rho = rho_neutral
-    block = plasma
-  []
-  [Os_advection]
-    type = PhysicsFVMassFractionAdvection
-    variable = w_Os
-    rho = rho_neutral
-    block = plasma
-  []
-  [Os_diffusion]
-    type = PhysicsFVMixtureAveragedDiffusion
-    variable = w_Os
-    rho = rho_neutral
-    diffusivity = D_mix_Os
-    mean_molar_mass = Mn_neutral
-    include_molar_mass_gradient = true
-    block = plasma
-  []
   [ei415_neutral_mass_source]
     type = FVCoupledForce
     variable = pressure
@@ -1222,125 +777,8 @@
 []
 
 [BCs]
-  [grounded_potential]
-    type = DirichletBC
-    variable = potential
-    value = 0.0
-    boundary = 'inlet outlet plasma_electrode plasma_metal plasma_right cover_outer_right wafer_electrode focus_ring_ground vacuum_outer_ground cover_coil_ground vacuum_coil_ground'
-  []
-  [cover_surface_charge_poisson]
-    type = PhysicsADSurfaceChargePoissonBC
-    variable = potential
-    boundary = plasma_cover
-    surface_charge = sigma_s
-  []
-  [wafer_surface_charge_poisson]
-    type = PhysicsADSurfaceChargePoissonBC
-    variable = potential
-    boundary = plasma_wafer
-    surface_charge = sigma_wafer
-  []
-  [focus_ring_surface_charge_poisson]
-    type = PhysicsADSurfaceChargePoissonBC
-    variable = potential
-    boundary = plasma_focus_ring
-    surface_charge = sigma_focus_ring
-  []
 []
 
-[FVBCs]
-  [neutral_inlet_mass]
-    type = WCNSFVMassFluxBC
-    variable = pressure
-    boundary = inlet
-    mdot_pp = neutral_inlet_mdot
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    direction = '-1 0 0'
-  []
-  [neutral_inlet_u]
-    type = WCNSFVMomentumFluxBC
-    variable = u
-    boundary = inlet
-    mdot_pp = neutral_inlet_mdot
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    momentum_component = x
-    direction = '-1 0 0'
-  []
-  [neutral_inlet_v]
-    type = WCNSFVMomentumFluxBC
-    variable = v
-    boundary = inlet
-    mdot_pp = neutral_inlet_mdot
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    momentum_component = y
-    direction = '-1 0 0'
-  []
-
-  [neutral_inlet_O2s]
-    type = WCNSFVScalarFluxBC
-    variable = w_O2s
-    boundary = inlet
-    passive_scalar = w_O2s
-    scalar_flux_pp = neutral_inlet_mdot_O2s
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    direction = '-1 0 0'
-  []
-  [neutral_inlet_O]
-    type = WCNSFVScalarFluxBC
-    variable = w_O
-    boundary = inlet
-    passive_scalar = w_O
-    scalar_flux_pp = neutral_inlet_mdot_O
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    direction = '-1 0 0'
-  []
-  [neutral_inlet_Os]
-    type = WCNSFVScalarFluxBC
-    variable = w_Os
-    boundary = inlet
-    passive_scalar = w_Os
-    scalar_flux_pp = neutral_inlet_mdot_Os
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    direction = '-1 0 0'
-  []
-
-  [neutral_wall_u]
-    type = INSFVNoSlipWallBC
-    variable = u
-    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring'
-    function = 0
-  []
-  [neutral_wall_v]
-    type = INSFVNoSlipWallBC
-    variable = v
-    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring'
-    function = 0
-  []
-  [neutral_outlet_p]
-    type = INSFVOutletPressureBC
-    variable = pressure
-    boundary = outlet
-    function = ${Physics/Plasmas/pressure}
-  []
-[]
 
 [Postprocessors]
   [ne_min]
@@ -1451,26 +889,6 @@
     type = AreaPostprocessor
     boundary = inlet
     execute_on = INITIAL
-  []
-  [neutral_inlet_mdot]
-    type = Receiver
-    default = 4.758967769568476e-06
-  []
-  [neutral_inlet_mdot_O2]
-    type = Receiver
-    default = 4.7588725892612807e-06
-  []
-  [neutral_inlet_mdot_O2s]
-    type = Receiver
-    default = 4.759015359722073e-11
-  []
-  [neutral_inlet_mdot_O]
-    type = Receiver
-    default = 2.3795076798610365e-11
-  []
-  [neutral_inlet_mdot_Os]
-    type = Receiver
-    default = 2.3795076798610365e-11
   []
 
   [neutral_outlet_mass]
@@ -2466,11 +1884,40 @@ faraday_t6 = 96485.33212331001
     pressure = 1.333223684
     temperature = 300
     state_model = ideal_gas
+    # Solved-pressure neutral mixture; separate from charged Chemistry species.
+    sccm = 200
+    inlet_boundaries = inlet
+    inlet_area = 0.05954574715614091
+    inlet_species_bc_ownership = external_flux
+    neutral_species = 'O2 O2s O Os'
+    neutral_molar_masses = '0.032 0.032 0.016 0.016'
+    neutral_fraction_names = 'w_O2_constraint w_O2s w_O w_Os'
+    neutral_initial_fractions = '0.9999799997999979 1.000010000100001e-5 5.0000500005000049e-6 5.0000500005000049e-6'
+    neutral_inlet_fractions = '0.9999799997999979 1.000010000100001e-5 5.000050000500005e-6 5.000050000500005e-6'
+    neutral_dependent_species = O2
+    neutral_blocks = plasma
+    # Retain S6 numerical constant for controlled A/B.
+    neutral_eos_gas_constant = 8.31446
+    [Poisson]
+      fem_potential = potential
+    []
     # Shared FEM-potential gradient evaluation for every C2 FV ion wall.
     wall_gradient = adjacent_element
     [Transport]
+      [NavierStokes]
+        block = plasma
+        neutral_collision_file = 'neutral_transport_aliases.txt'
+        solve_neutral_transport = true
+        neutral_wall_boundaries = 'plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring'
+        neutral_outlet_boundaries = outlet
+        neutral_inlet_direction = '-1 0 0'
+        neutral_outlet_pressure = ${Physics/Plasmas/pressure}
+        neutral_viscosity = mu_flow
+        neutral_rhie_chow = rc
+      []
       [Chemistry]
         block = plasma
+        neutral_target_aliases = 'O2a:O2s'
       []
       [DriftDiffusion]
         [Continuity]

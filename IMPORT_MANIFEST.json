@@ -841,7 +841,7 @@
       "source_path": "physics_app/include/physics/plasma/Chemistry.h",
       "path": "app/include/physics/plasma/Chemistry.h",
       "mode": "100644",
-      "blob": "d3f1404aa1aef68aa5efae638c37bb36ef05c1aa"
+      "blob": "7d97bfcf44860a007f9d2283f61f32306be42969"
     },
     {
       "source_path": "physics_app/include/physics/plasma/DDContinuityEq.h",
@@ -865,13 +865,13 @@
       "source_path": "physics_app/include/physics/plasma/MaxwellPhysics.h",
       "path": "app/include/physics/plasma/MaxwellPhysics.h",
       "mode": "100644",
-      "blob": "37637d4587a6ba44e79c75f0a3af911a668f329a"
+      "blob": "e49117afb8f452a2b5ae4f8a46b4902c8041f5d3"
     },
     {
       "source_path": "physics_app/include/physics/plasma/NVTransport.h",
       "path": "app/include/physics/plasma/NVTransport.h",
       "mode": "100644",
-      "blob": "445b85975ddb31e6acf2f02d2bd2cbcfbd7619e0"
+      "blob": "fbc0b19a904b1c709bdf3e9c833f24142763a852"
     },
     {
       "source_path": "physics_app/include/physics/plasma/PlasmaInterface.h",
@@ -1219,7 +1219,7 @@
       "source_path": "physics_app/src/physics/plasma/Chemistry.C",
       "path": "app/src/physics/plasma/Chemistry.C",
       "mode": "100644",
-      "blob": "5815f9bc6c1d25c01ff0783a9ee2115d51565859"
+      "blob": "1bd23ba9323d47cfcc8b3ae379919c54e958ad19"
     },
     {
       "source_path": "physics_app/src/physics/plasma/DDContinuityEq.C",
@@ -1243,13 +1243,13 @@
       "source_path": "physics_app/src/physics/plasma/MaxwellPhysics.C",
       "path": "app/src/physics/plasma/MaxwellPhysics.C",
       "mode": "100644",
-      "blob": "62521178f182a9a8b7cbdd434a4291fce07b0d2c"
+      "blob": "c187f3e2b785920827a29c09c9588084c412421c"
     },
     {
       "source_path": "physics_app/src/physics/plasma/NVTransport.C",
       "path": "app/src/physics/plasma/NVTransport.C",
       "mode": "100644",
-      "blob": "063ed007aa70f6d3e63b9124071b37fd306129ab"
+      "blob": "6086ee0cfebb2d3b6ab0109f6d1ff51287e13421"
     },
     {
       "source_path": "physics_app/src/physics/plasma/PlasmaInterface.C",
@@ -1488,5 +1488,101 @@
     "validated_mesh_run": 46136191787,
     "parent_input_blob": "beb0c7225c9871d373ca0af7fc0ea4db51b4d3cf",
     "scope": "Enable Maxwell Exodus only; retain default MultiApp-qualified file base and latest steady solve output; Parent transient history unchanged."
+  },
+  "new_only_assets": {
+    "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
+    "stage": "P7_CANDIDATE_PHYSICAL_MAXWELL_DSL",
+    "candidate_blobs": {
+      "assets/input.i": "a84e1dfd8db1ba6f3affbb03c81ac374af683ff9",
+      "assets/maxwell.i": "b72ee2d59b82c8ad3e3830e2b1f0580e7e17439d",
+      "assets/chemistry.json": "121095f7932276b9fa843d9dfc9bf8332911d5c5",
+      "assets/neutral_transport_aliases.txt": "98075edf56cbe7d3b5e96c531efe74277ffc0a37"
+    },
+    "retained": "Explicit physical RF region catalogue, live mobility/conductivity and power density materials; parent-child transfers, drive controller and receiver; neutral reaction sources, H25 and diagnostics. Coil area numeric as approved; numerical equivalence pending.",
+    "science": "SCIENCE_HOLD",
+    "source_delta": [
+      {
+        "path": "app/src/physics/plasma/Chemistry.C",
+        "import_blob": "5815f9bc6c1d25c01ff0783a9ee2115d51565859",
+        "candidate_blob": "b11a022ea149b63610cfafb3f770bbbcfaddab8e",
+        "reason": "Solved neutral mixture and SCCM owner; preserve historical lane and exact legacy EOS constant."
+      },
+      {
+        "path": "app/src/physics/plasma/NVTransport.C",
+        "import_blob": "063ed007aa70f6d3e63b9124071b37fd306129ab",
+        "candidate_blob": "dfd2c21a8809e674387879fec7f15d230c05405a",
+        "reason": "Reuse solved neutral catalogue for NVTransport; publish live concentrations."
+      },
+      {
+        "path": "app/src/physics/plasma/NVTransport.C",
+        "prior_blob": "dfd2c21a8809e674387879fec7f15d230c05405a",
+        "candidate_blob": "6086ee0cfebb2d3b6ab0109f6d1ff51287e13421",
+        "reason": "Opt-in RZ neutral conservation and conservative WCNS BC generation with existing numerical operators."
+      },
+      {
+        "path": "app/include/physics/plasma/NVTransport.h",
+        "prior_blob": "445b85975ddb31e6acf2f02d2bd2cbcfbd7619e0",
+        "candidate_blob": "fbc0b19a904b1c709bdf3e9c833f24142763a852",
+        "reason": "Opt-in RZ neutral conservation and conservative WCNS BC generation with existing numerical operators."
+      },
+      {
+        "path": "app/src/physics/plasma/Chemistry.C",
+        "prior_blob": "b11a022ea149b63610cfafb3f770bbbcfaddab8e",
+        "candidate_blob": "43c69ed13dc923a5839df80afce0259cf721f5fe",
+        "reason": "Explicit validated O2a:O2s lookup binding, preserve native reaction IDs/tables."
+      },
+      {
+        "path": "app/include/physics/plasma/Chemistry.h",
+        "prior_blob": "d3f1404aa1aef68aa5efae638c37bb36ef05c1aa",
+        "candidate_blob": "7d97bfcf44860a007f9d2283f61f32306be42969",
+        "reason": "Chemistry-owned signed elastic transfer preserving exact historical coefficient and diagnostic names."
+      },
+      {
+        "path": "app/src/physics/plasma/Chemistry.C",
+        "prior_blob": "43c69ed13dc923a5839df80afce0259cf721f5fe",
+        "candidate_blob": "1bd23ba9323d47cfcc8b3ae379919c54e958ad19",
+        "reason": "Chemistry-owned signed elastic transfer preserving exact historical coefficient and diagnostic names."
+      },
+      {
+        "path": "app/src/physics/plasma/MaxwellPhysics.C",
+        "prior_blob": "62521178f182a9a8b7cbdd434a4291fce07b0d2c",
+        "candidate_blob": "fa9ea7dc7d3e25386a1a2234b8330e24ca379ecb",
+        "reason": "Move three coil-local BodyForce objects and live RF scale binding into Maxwell Action; preserve names, signed amplitude and legacy prescribed source."
+      },
+      {
+        "path": "app/include/physics/plasma/MaxwellPhysics.h",
+        "prior_blob": "37637d4587a6ba44e79c75f0a3af911a668f329a",
+        "candidate_blob": "fafc6d2555ee2a49291d992bd168abb015f80d46",
+        "reason": "Move three coil-local BodyForce objects and live RF scale binding into Maxwell Action; preserve names, signed amplitude and legacy prescribed source."
+      },
+      {
+        "path": "app/src/physics/plasma/MaxwellPhysics.C",
+        "prior_blob": "fa9ea7dc7d3e25386a1a2234b8330e24ca379ecb",
+        "candidate_blob": "5551a82687f71e898d341fd7c8a3d850b78c4320",
+        "reason": "Canonical frequency_Hz spelling, numeric input and single frequency authority; legacy frequency_hz accepted exclusively for existing fixtures."
+      },
+      {
+        "path": "app/src/physics/plasma/MaxwellPhysics.C",
+        "prior_blob": "5551a82687f71e898d341fd7c8a3d850b78c4320",
+        "candidate_blob": "c187f3e2b785920827a29c09c9588084c412421c",
+        "reason": "Physical Maxwell DSL: generate default RF FE variables, geometry functions, reaction/coupling materials and driven-coil sources; keep live RF control interface and constitutive closure."
+      },
+      {
+        "path": "app/include/physics/plasma/MaxwellPhysics.h",
+        "prior_blob": "fafc6d2555ee2a49291d992bd168abb015f80d46",
+        "candidate_blob": "e49117afb8f452a2b5ae4f8a46b4902c8041f5d3",
+        "reason": "Physical Maxwell DSL: generate default RF FE variables, geometry functions, reaction/coupling materials and driven-coil sources; keep live RF control interface and constitutive closure."
+      }
+    ],
+    "alias_projection": {
+      "source_blob": "751bfd5fc32887f1a3ea6e9da771aeb3bb732363",
+      "derived_blob": "98075edf56cbe7d3b5e96c531efe74277ffc0a37",
+      "policy": "Only remove species mass column, no collision data change; original retained for legacy A/B until retirement."
+    },
+    "repair": {
+      "run_id": 46171141784,
+      "diagnosis": "MOOSE unused GlobalParams/rhie_chow_user_object after Action takes explicit ownership; remove redundant global only. Keep explicit RC on diagnostics and NVTransport."
+    },
+    "rebased_from": "83ecc3731ec1781ebb0c134d7b95b3feb5369e99"
   }
 }

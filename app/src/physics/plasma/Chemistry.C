@@ -1278,6 +1278,28 @@ ChemistryData::ChemistryData(const std::vector<std::string> & files,
           fail(file, reaction.id + ": electron energy loss must be finite and nonnegative");
         reaction.contributes_electron_energy = reaction.energy_loss_eV != 0.0;
       }
+      else if (energy.is_object() && energy.value("model", std::string()) == "elastic")
+      {
+        const std::set<std::string> allowed{"model", "exchange_factor", "kb_eV_K", "diagnostic_source"};
+        for (auto it = energy.begin(); it != energy.end(); ++it)
+          if (!allowed.count(it.key()))
+            fail(file, reaction.id + ": unsupported elastic energy key " + it.key());
+        if (reaction.domain != "volume" || reaction.rate.model != "lookup" ||
+            reaction.reactants != reaction.products ||
+            !energy.contains("exchange_factor") || !energy.at("exchange_factor").is_number() ||
+            !energy.contains("kb_eV_K") || !energy.at("kb_eV_K").is_number())
+          fail(file, reaction.id + ": elastic energy requires unchanged EI collision and numeric coefficients");
+        reaction.elastic_exchange_factor = energy.at("exchange_factor").get<double>();
+        reaction.elastic_kb_eV_K = energy.at("kb_eV_K").get<double>();
+        if (!std::isfinite(reaction.elastic_exchange_factor) || reaction.elastic_exchange_factor <= 0.0 ||
+            !std::isfinite(reaction.elastic_kb_eV_K) || reaction.elastic_kb_eV_K <= 0.0)
+          fail(file, reaction.id + ": elastic coefficients must be finite and positive");
+        reaction.energy_loss_functor = "delta_epsilon_" + reaction.progress.substr(2) + "_eV";
+        reaction.elastic_diagnostic_source = requiredText(energy, "diagnostic_source", file);
+        if (reaction.elastic_diagnostic_source.empty())
+          fail(file, reaction.id + ": empty elastic diagnostic source");
+        reaction.contributes_electron_energy = true;
+      }
       else if (energy.is_object() && energy.value("model", std::string()) == "functor" &&
                energy.contains("name") && energy["name"].is_string())
       {
@@ -1409,6 +1431,8 @@ Chemistry::validParams()
   params.addClassDescription(
       "Generates one source Functor per species and one electron-energy source "
       "from validated [Plasmas]/files reaction channels; explicit EI lookup progress is generated here.");
+  params.addParam<std::vector<std::string>>("neutral_target_aliases",
+      "Explicit chemistry:neutral-mixture target bindings for EI lookups.");
   return params;
 }
 
@@ -1435,6 +1459,44 @@ Chemistry::addFunctorMaterials()
     mooseError("Activated [Transport]/[Chemistry] requires reactions in [Plasmas]/files");
   std::map<std::string, SourceExpression> particle;
   SourceExpression energy;
+  std::map<std::string, std::string> aliases;
+  std::set<std::string> active_targets;
+  std::set<std::string> lookup_targets;
+  for (const auto & reaction : mechanism.reactions())
+    if (reaction.rate.model == "lookup")
+      lookup_targets.insert(reaction.rate.lookup_target);
+  const auto roots = _awh.getActions<PlasmasAction>();
+  const bool solved_mixture = roots.size() == 1 && roots.front()->isParamValid("neutral_species");
+  if (solved_mixture)
+  {
+    const auto & ids = roots.front()->getParam<std::vector<std::string>>("neutral_species");
+    active_targets.insert(ids.begin(), ids.end());
+  }
+  if (isParamValid("neutral_target_aliases"))
+  {
+    if (!solved_mixture)
+      paramError("neutral_target_aliases", "Explicit target aliases require the solved neutral mixture.");
+    for (const auto & entry : getParam<std::vector<std::string>>("neutral_target_aliases"))
+    {
+      const auto colon = entry.find(':');
+      if (colon == std::string::npos || colon == 0 || colon + 1 == entry.size() ||
+          entry.find(':', colon + 1) != std::string::npos)
+        paramError("neutral_target_aliases", "Expected chemistry:mixture species.");
+      const auto source = entry.substr(0, colon);
+      const auto target = entry.substr(colon + 1);
+      if (!lookup_targets.count(source) || active_targets.count(source) ||
+          !active_targets.count(target) || !aliases.emplace(source, target).second)
+        paramError("neutral_target_aliases", "Unknown, redundant or duplicate target alias: ", entry);
+      // Preserve identity: only the documented S6 O2(a1Delta)/O2s mapping
+      // is characterized; never silently redirect arbitrary chemistry.
+      if (source != "O2a" || target != "O2s")
+        paramError("neutral_target_aliases", "Unqualified chemistry/mixture species identity: ", entry);
+    }
+  }
+  if (solved_mixture)
+    for (const auto & target : lookup_targets)
+      if (!active_targets.count(target) && !aliases.count(target))
+        paramError("neutral_target_aliases", "Unbound EI target: ", target);
 
   // The shared mechanism merges reactions from every [Plasmas]/files entry.
   // For each reaction ID, generate an explicit EI lookup when requested and
@@ -1459,11 +1521,34 @@ Chemistry::addFunctorMaterials()
       params.set<FileName>("rate_table_file") = reaction.rate.table_file;
       params.set<MooseFunctorName>("mean_energy") = "e_energy_eV";
       params.set<MooseFunctorName>("electron_number_density") = "n_e_physical";
-      params.set<MooseFunctorName>("target_molar_concentration") =
-          "c_" + reaction.rate.lookup_target + "_molar";
+      const auto alias = aliases.find(reaction.rate.lookup_target);
+      const auto & target = alias == aliases.end() ? reaction.rate.lookup_target : alias->second;
+      params.set<MooseFunctorName>("target_molar_concentration") = "c_" + target + "_molar";
       params.set<std::string>("reaction_progress") = reaction.progress;
       assignBlocks(params, _blocks);
       getProblem().addFunctorMaterial(type, "chemistry_" + reaction.progress + "_lookup", params);
+    }
+    if (reaction.elastic_exchange_factor > 0.0)
+    {
+      const std::string type = "ADParsedFunctorMaterial";
+      auto loss = getFactory().getValidParams(type);
+      loss.set<std::string>("property_name") = reaction.energy_loss_functor;
+      loss.set<std::vector<std::string>>("functor_names") = {"e_energy_eV", "temperature"};
+      loss.set<std::vector<std::string>>("functor_symbols") = {"eps", "Tg"};
+      loss.set<std::string>("expression") =
+          realLiteral(reaction.elastic_exchange_factor) + "*((2.0/3.0)*eps-" +
+          realLiteral(reaction.elastic_kb_eV_K) + "*Tg)";
+      assignBlocks(loss, _blocks);
+      getProblem().addFunctorMaterial(type, "chemistry_" + reaction.progress + "_elastic_loss", loss);
+      // Diagnostic only: the aggregate electron source remains the sole RHS owner.
+      auto diagnostic = getFactory().getValidParams(type);
+      diagnostic.set<std::string>("property_name") = reaction.elastic_diagnostic_source;
+      diagnostic.set<std::vector<std::string>>("functor_names") =
+          {reaction.energy_loss_functor, reaction.progress};
+      diagnostic.set<std::vector<std::string>>("functor_symbols") = {"de", "R"};
+      diagnostic.set<std::string>("expression") = "-de*R";
+      assignBlocks(diagnostic, _blocks);
+      getProblem().addFunctorMaterial(type, "chemistry_" + reaction.progress + "_elastic_diagnostic", diagnostic);
     }
     std::set<std::string> touched;
     for (const auto & [id, coefficient] : reaction.reactants)
@@ -1486,7 +1571,7 @@ Chemistry::addFunctorMaterials()
       const auto progress = energy.symbol(reaction.progress);
       if (!reaction.energy_loss_functor.empty())
       {
-        // The source Functor is a POSITIVE energy-loss magnitude [eV/event].
+        // Loss convention [eV/event]; elastic transfer may be negative for a hot gas.
         // One negative sign is applied at the aggregate electron RHS only.
         const auto loss = energy.symbol(reaction.energy_loss_functor);
         energy.parts.push_back("(-1.0)*(" + loss + ")*" + progress);
@@ -1592,6 +1677,17 @@ PlasmasAction::validParams()
       "inlet_species_bc_ownership", MooseEnum("root_dirichlet external_flux", "root_dirichlet"),
       "root_dirichlet generates composition BCs; external_flux preserves user WCNS "
       "species flux BCs without adding duplicate Dirichlet conditions.");
+  // Explicit opt-in for the solved-pressure neutral-mixture owner.
+  // This catalogue is separate from charged drift-diffusion chemistry.
+  params.addParam<std::vector<std::string>>("neutral_species", "Ordered neutral species IDs.");
+  params.addParam<std::vector<Real>>("neutral_molar_masses", "Neutral species masses [kg/mol].");
+  params.addParam<std::vector<std::string>>("neutral_fraction_names", "Live FV variables; dependent entry is a generated Functor.");
+  params.addParam<std::vector<Real>>("neutral_initial_fractions", "Initial neutral mass fractions.");
+  params.addParam<std::vector<Real>>("neutral_inlet_fractions", "Inlet neutral mass fractions.");
+  params.addParam<std::string>("neutral_dependent_species", "Species constrained by sum(Y)=1.");
+  params.addParam<std::vector<SubdomainName>>("neutral_blocks", "Neutral mixture domain.");
+  params.addParam<Real>("neutral_eos_gas_constant", 8.31446261815324,
+                        "Live isothermal EOS gas constant [J/mol/K]; explicit legacy value permitted for parity.");
   return params;
 }
 
@@ -1950,6 +2046,14 @@ PlasmasAction::act()
   // neutral EOS (rho_neutral); it does not claim an equivalent complete
   // JSON heavy-mixture catalogue. Never synthesize or renormalize missing
   // species fractions. A partially declared root mixture fails closed.
+  const bool neutral_owner = isParamValid("neutral_species");
+  for (const auto * key : {"neutral_molar_masses", "neutral_fraction_names",
+                           "neutral_initial_fractions", "neutral_inlet_fractions",
+                           "neutral_dependent_species", "neutral_blocks"})
+    if (isParamValid(key) != neutral_owner)
+      paramError(key, "Solved neutral mixture requires all explicit catalogue fields.");
+  if (neutral_owner && !_problem->hasVariable("pressure"))
+    paramError("neutral_species", "Solved neutral mixture requires a pressure variable.");
   if (_problem->hasVariable("pressure"))
   {
     bool has_root_composition = false;
@@ -1965,9 +2069,12 @@ PlasmasAction::act()
       paramError("files", "A solved Navier-Stokes pressure variable uses the "
                          "Native neutral composition closure; do not activate a "
                          "second root ideal-gas mixture owner.");
-    if (isParamValid("sccm"))
+    if (isParamValid("sccm") && !neutral_owner)
       paramError("sccm", "A solved pressure cannot use root SCCM/mixture inlet "
                           "without a separately verified mixture contract.");
+    if (neutral_owner && (!isParamValid("sccm") ||
+        getParam<MooseEnum>("inlet_species_bc_ownership") != "external_flux"))
+      paramError("sccm", "Solved neutral mixture requires SCCM and external_flux WCNS ownership.");
     if (_current_task == "add_ics_physics")
     {
       const auto type = "FVConstantIC";
@@ -2000,6 +2107,148 @@ PlasmasAction::act()
       gas.set<std::vector<std::string>>("functor_symbols") =
           {"pressure", "temperature"};
       _problem->addFunctorMaterial("ADParsedFunctorMaterial", "plasma_gas_n_g", gas);
+    }
+    if (neutral_owner)
+    {
+      const auto & ids = getParam<std::vector<std::string>>("neutral_species");
+      const auto & masses = getParam<std::vector<Real>>("neutral_molar_masses");
+      const auto & names = getParam<std::vector<std::string>>("neutral_fraction_names");
+      const auto & initial = getParam<std::vector<Real>>("neutral_initial_fractions");
+      const auto & inlet = getParam<std::vector<Real>>("neutral_inlet_fractions");
+      const auto & blocks = getParam<std::vector<SubdomainName>>("neutral_blocks");
+      const auto & dependent = getParam<std::string>("neutral_dependent_species");
+      const Real gas_constant = getParam<Real>("neutral_eos_gas_constant");
+      const auto n = ids.size();
+      if (n < 2 || masses.size() != n || names.size() != n ||
+          initial.size() != n || inlet.size() != n || blocks.empty() ||
+          !std::isfinite(gas_constant) || gas_constant <= 0 ||
+          std::set<std::string>(names.begin(), names.end()).size() != n)
+        paramError("neutral_species", "Invalid solved neutral mixture catalogue shape.");
+      const auto found = std::find(ids.begin(), ids.end(), dependent);
+      if (found == ids.end())
+        paramError("neutral_dependent_species", "Dependent species must be in catalogue.");
+      const auto d = static_cast<std::size_t>(found - ids.begin());
+      std::vector<Plasma::IdealGasMixtureSpecies> initial_state;
+      std::vector<Plasma::SCCMFeedSpecies> feed;
+      for (std::size_t k = 0; k < n; ++k)
+      {
+        if (names[k].empty() || (k != d && !_problem->hasVariable(names[k])) ||
+            (k == d && _problem->hasVariable(names[k])))
+          paramError("neutral_fraction_names", "Independent species require existing variables; dependent species must be a Functor.");
+        const auto rec = _data.speciesRecords().find(ids[k]);
+        if (rec != _data.speciesRecords().end() && rec->second.charge_number != 0)
+          paramError("neutral_species", "Charged chemistry species cannot belong to neutral mixture.");
+        initial_state.push_back({ids[k], initial[k], masses[k]});
+        feed.push_back({ids[k], inlet[k], masses[k]});
+      }
+      std::map<std::string, double> flow;
+      try
+      {
+        (void)Plasma::IdealGasMixtureState::evaluate(
+            getParam<Real>("pressure"), getParam<Real>("temperature"), initial_state);
+        flow = Plasma::SCCMInletFlow::calculate(
+            {getParam<Real>("sccm"), getParam<Real>("inlet_area"),
+             getParam<Real>("standard_molar_volume"), getParam<Real>("pressure"),
+             getParam<Real>("temperature")}, feed);
+      }
+      catch (const std::invalid_argument & error)
+      {
+        paramError("neutral_species", "Invalid solved neutral mixture: ", error.what());
+      }
+      if (_current_task == "add_ics_physics")
+      {
+        for (std::size_t k = 0; k < n; ++k)
+          if (k != d)
+          {
+            auto p = _factory.getValidParams("FVConstantIC");
+            p.set<VariableName>("variable") = names[k];
+            p.set<Real>("value") = initial[k];
+            _problem->addFVInitialCondition("FVConstantIC", "neutral_initial_" + ids[k], p);
+          }
+      }
+      else if (_current_task == "add_postprocessor")
+      {
+        // Preserve public diagnostics and WCNS flux consumers; the actual
+        // mesh area remains owned by the native AreaPostprocessor.
+        const auto publish = [this, &flow](const std::string & suffix)
+        {
+          auto p = _factory.getValidParams("ConstantPostprocessor");
+          p.set<Real>("value") = flow.at("plasma_inlet_" + suffix);
+          _problem->addPostprocessor("ConstantPostprocessor", "neutral_inlet_" + suffix, p);
+        };
+        publish("mdot");
+        for (const auto & id : ids)
+          publish("mdot_" + id);
+      }
+      else if (_current_task == "add_functor_material")
+      {
+        const auto literal = [](Real v)
+        {
+          std::ostringstream out;
+          out << std::setprecision(17) << v;
+          return out.str();
+        };
+        const auto add = [this, &blocks](const std::string & property,
+            const std::string & expression, const std::vector<std::string> & functors,
+            const std::vector<std::string> & symbols)
+        {
+          auto p = _factory.getValidParams("ADParsedFunctorMaterial");
+          p.set<std::string>("property_name") = property;
+          p.set<std::string>("expression") = expression;
+          p.set<std::vector<std::string>>("functor_names") = functors;
+          p.set<std::vector<std::string>>("functor_symbols") = symbols;
+          p.set<std::vector<SubdomainName>>("block") = blocks;
+          _problem->addFunctorMaterial("ADParsedFunctorMaterial", "neutral_owner_" + property, p);
+        };
+        std::vector<std::string> independent, symbols, all_symbols;
+        std::vector<std::string> aliases = {"neutral_pressure_state"};
+        std::vector<MooseFunctorName> alias_values = {"pressure"};
+        std::vector<std::string> dot_names = {"Mn_neutral"}, dot_symbols = {"mn"};
+        std::string closure = "1.0", inverse, sum, derivative;
+        for (std::size_t k = 0; k < n; ++k)
+        {
+          const auto symbol = "y" + std::to_string(k);
+          all_symbols.push_back(symbol);
+          inverse += (inverse.empty() ? "" : "+") + symbol + "/" + literal(masses[k]);
+          sum += (sum.empty() ? "" : "+") + symbol;
+          if (k == d)
+            continue;
+          independent.push_back(names[k]);
+          symbols.push_back(symbol);
+          closure += "-" + symbol;
+          // dY_dependent/dt = -sum(dY_independent/dt).
+          const Real coefficient = 1.0 / masses[k] - 1.0 / masses[d];
+          if (coefficient != 0.0)
+          {
+            const auto alias = "neutral_" + ids[k] + "_state";
+            aliases.push_back(alias);
+            alias_values.emplace_back(names[k]);
+            const auto dot_symbol = "dy" + std::to_string(k);
+            dot_names.push_back("d" + alias + "_dt");
+            dot_symbols.push_back(dot_symbol);
+            derivative += (derivative.empty() ? "" : "+") +
+                          std::string("(") + literal(coefficient) + ")*" + dot_symbol;
+          }
+        }
+        auto dot = _factory.getValidParams("ADGenericFunctorMaterial");
+        dot.set<std::vector<std::string>>("prop_names") = aliases;
+        dot.set<std::vector<MooseFunctorName>>("prop_values") = alias_values;
+        dot.set<bool>("define_dot_functors") = true;
+        dot.set<std::vector<SubdomainName>>("block") = blocks;
+        _problem->addFunctorMaterial("ADGenericFunctorMaterial", "neutral_owner_dot_aliases", dot);
+        add(names[d], closure, independent, symbols);
+        add("Mn_neutral", "1.0/(" + inverse + ")", names, all_symbols);
+        add("rho_neutral", "prs*mol/(" + literal(gas_constant) + "*tmp)",
+            {"pressure", "Mn_neutral", "temperature"}, {"prs", "mol", "tmp"});
+        add("dMn_neutral_dt", derivative.empty() ? "0.0*mn" : "-mn*mn*(" + derivative + ")",
+            dot_names, dot_symbols);
+        add("drho_neutral_dt", "(mn*dp+prs*dmn)/(" + literal(gas_constant) + "*tmp)",
+            {"pressure", "Mn_neutral", "dneutral_pressure_state_dt", "dMn_neutral_dt", "temperature"},
+            {"prs", "mn", "dp", "dmn", "tmp"});
+        add("neutral_sum_w_functor", sum, names, all_symbols);
+        for (std::size_t k = 0; k < n; ++k)
+          add("rho_w_" + ids[k], "rho*w", {"rho_neutral", names[k]}, {"rho", "w"});
+      }
     }
     return;
   }

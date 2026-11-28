@@ -13,5 +13,7 @@ public:
 
 private:
   void addFunctorMaterials() override;
+  void addFVKernels() override;
+  void addFVBCs() override;
 };
 } // namespace Plasma
