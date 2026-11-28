@@ -1491,9 +1491,9 @@
   },
   "new_only_assets": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "stage": "P4_CANDIDATE_NEUTRAL_TRANSPORT_PDE_BC",
+    "stage": "P4_CANDIDATE_NEUTRAL_TRANSPORT_PDE_BC_UNUSED_GLOBAL_FIX",
     "candidate_blobs": {
-      "assets/input.i": "f3556f3f2bdab3a2aff5a06089eca34eedb3e4ca",
+      "assets/input.i": "b1d0c3dd1867fdc8e7e6d150a53c00aad724fec8",
       "assets/maxwell.i": "c317fbbb7a55eee52a22e65db7e6349c54f0cebd",
       "assets/chemistry.json": "9cfdfa2286dae1c4d1a6cb5bd85fb8b086b1f010",
       "assets/neutral_transport_aliases.txt": "98075edf56cbe7d3b5e96c531efe74277ffc0a37"
@@ -1530,6 +1530,10 @@
       "source_blob": "751bfd5fc32887f1a3ea6e9da771aeb3bb732363",
       "derived_blob": "98075edf56cbe7d3b5e96c531efe74277ffc0a37",
       "policy": "Only remove species mass column, no collision data change; original retained for legacy A/B until retirement."
+    },
+    "repair": {
+      "run_id": 46171141784,
+      "diagnosis": "MOOSE unused GlobalParams/rhie_chow_user_object after Action takes explicit ownership; remove redundant global only. Keep explicit RC on diagnostics and NVTransport."
     }
   }
 }

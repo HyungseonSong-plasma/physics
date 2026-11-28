@@ -62,7 +62,6 @@
 []
 
 [GlobalParams]
-  rhie_chow_user_object = rc
   advected_interp_method = upwind
   velocity_interp_method = rc
   two_term_boundary_expansion = true
