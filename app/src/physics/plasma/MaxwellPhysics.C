@@ -17,8 +17,11 @@ MaxwellPhysics::validParams()
       "field_real", "Existing solver variable for the real electromagnetic field.");
   params.addRequiredParam<VariableName>(
       "field_imag", "Existing solver variable for the imaginary electromagnetic field.");
-  params.addRequiredParam<Real>(
-      "frequency_hz", "Positive electromagnetic driving frequency in hertz.");
+  params.addParam<Real>(
+      "frequency_Hz", "Positive electromagnetic driving frequency in hertz.");
+  // Compatibility with existing fixtures; the canonical input uses frequency_Hz.
+  params.addParam<Real>(
+      "frequency_hz", "Legacy spelling of frequency_Hz; do not specify both.");
 
   params.addParam<MaterialPropertyName>(
       "reaction_material", "Existing RF reaction coefficient neg_a.");
@@ -38,8 +41,14 @@ MaxwellPhysics::validParams()
 MaxwellPhysics::MaxwellPhysics(const InputParameters & parameters)
   : PlasmaInterface(parameters)
 {
-  if (!std::isfinite(getParam<Real>("frequency_hz")) || getParam<Real>("frequency_hz") <= 0)
-    paramError("frequency_hz", "The frequency must be greater than zero.");
+  const bool canonical_frequency = isParamValid("frequency_Hz");
+  const bool legacy_frequency = isParamValid("frequency_hz");
+  if (canonical_frequency == legacy_frequency)
+    paramError("frequency_Hz", "Specify exactly one of frequency_Hz and legacy frequency_hz.");
+  const auto key = canonical_frequency ? "frequency_Hz" : "frequency_hz";
+  const auto frequency = getParam<Real>(key);
+  if (!std::isfinite(frequency) || frequency <= 0)
+    paramError(key, "The frequency must be finite and greater than zero.");
   if (getParam<VariableName>("field_real").empty() ||
       getParam<VariableName>("field_imag").empty() ||
       getParam<VariableName>("field_real") == getParam<VariableName>("field_imag"))

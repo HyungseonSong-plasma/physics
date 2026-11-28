@@ -9,7 +9,7 @@
 
 mu0 = 1.2566370614359173e-6
 eps0 = 8.8541878128e-12
-frequency = 13.56e6
+frequency = ${Physics/Plasmas/Maxwell/frequency_Hz}
 omega = '${fparse 2*3.141592653589793*frequency}'
 omega_mu0 = '${fparse omega*mu0}'
 wave_k2 = '${fparse omega*omega*mu0*eps0}'
@@ -308,7 +308,7 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
     [Maxwell]
       field_real = E_real
       field_imag = E_imag
-      frequency_hz = ${frequency}
+      frequency_Hz = 13.56e6
       reaction_material = neg_a
       coupling_material = b
       coil_blocks = 'coil1 coil2 coil3'

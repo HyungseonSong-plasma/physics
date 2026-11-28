@@ -1243,7 +1243,7 @@
       "source_path": "physics_app/src/physics/plasma/MaxwellPhysics.C",
       "path": "app/src/physics/plasma/MaxwellPhysics.C",
       "mode": "100644",
-      "blob": "fa9ea7dc7d3e25386a1a2234b8330e24ca379ecb"
+      "blob": "5551a82687f71e898d341fd7c8a3d850b78c4320"
     },
     {
       "source_path": "physics_app/src/physics/plasma/NVTransport.C",
@@ -1494,7 +1494,7 @@
     "stage": "P7_CANDIDATE_MAXWELL_COIL_SOURCE",
     "candidate_blobs": {
       "assets/input.i": "a84e1dfd8db1ba6f3affbb03c81ac374af683ff9",
-      "assets/maxwell.i": "813d32c0b892c7b598f76dddfbb0d2dba6b1b091",
+      "assets/maxwell.i": "e1ff1b0f2442ec2ef46709f83dad6b390e9dda00",
       "assets/chemistry.json": "121095f7932276b9fa843d9dfc9bf8332911d5c5",
       "assets/neutral_transport_aliases.txt": "98075edf56cbe7d3b5e96c531efe74277ffc0a37"
     },
@@ -1554,6 +1554,12 @@
         "prior_blob": "37637d4587a6ba44e79c75f0a3af911a668f329a",
         "candidate_blob": "fafc6d2555ee2a49291d992bd168abb015f80d46",
         "reason": "Move three coil-local BodyForce objects and live RF scale binding into Maxwell Action; preserve names, signed amplitude and legacy prescribed source."
+      },
+      {
+        "path": "app/src/physics/plasma/MaxwellPhysics.C",
+        "prior_blob": "fa9ea7dc7d3e25386a1a2234b8330e24ca379ecb",
+        "candidate_blob": "5551a82687f71e898d341fd7c8a3d850b78c4320",
+        "reason": "Canonical frequency_Hz spelling, numeric input and single frequency authority; legacy frequency_hz accepted exclusively for existing fixtures."
       }
     ],
     "alias_projection": {
