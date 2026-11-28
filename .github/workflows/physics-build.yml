@@ -142,7 +142,7 @@ jobs:
           set -euo pipefail
           (cd assets && sha256sum -c mesh.sha256)
           bash -n tests/mesh/qualify-parent-exodus.sh
-          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/exodus-reader.py tests/mesh/verify-parent-exodus.py tests/mesh/diagnose-rf-transfer.py
+          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/exodus-reader.py tests/mesh/verify-parent-exodus.py tests/mesh/diagnose-rf-transfer.py tests/mesh/diagnose-fvm-conservation.py
           bash tests/mesh/qualify-parent-exodus.sh
       - name: Upload bounded evidence
         if: always()

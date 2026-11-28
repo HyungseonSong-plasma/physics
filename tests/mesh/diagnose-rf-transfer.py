@@ -78,14 +78,25 @@ try:
     report["csv"]={k:{"baseline":float(x[k]),"candidate":float(y[k]),"delta":float(y[k])-float(x[k])} for k in x if k.startswith(("P_abs","P_rf","neutral_outlet","neutral_u","neutral_v"))}
     (root/"parent-exodus-diagnostic.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print(json.dumps({section:{k:{q:v[q] for q in ("max_abs_delta","relative_l2","changed_at_local_1e-9","changed_interface_nodes")} for k,v in report[section].items()} for section in ("child_state","parent_frozen_state","child_rf","child_to_parent_rf")},indent=2))
-    # Exact copies must match the actual source and baseline values on every plasma DOF.
-    for section in ("child_state","parent_to_child_direct"):
+    # Direct transfer and frozen source must be exact. Old shape evaluation
+    # introduced rounding; compare it at four binary64 ULPs, not a physics tolerance.
+    for section in ("parent_to_child_direct","parent_frozen_state"):
         for name,v in report[section].items():
             assert v["max_abs_delta"]==0,(section,name,v)
+    for name,v in report["child_state"].items():
+        scale=max(abs(x) for x in v["baseline_min_max"])
+        assert v["max_abs_delta"]<=4*math.ulp(scale),(name,v)
+        assert v["changed_at_local_1e-9"]==0,(name,v)
     for section in ("child_rf","child_to_parent_rf"):
         for name,v in report[section].items():
             scale=max(abs(x) for x in v["baseline_min_max"])
             assert v["max_abs_delta"]<=1e-12+1e-9*scale,(section,name,v)
+    for key in ("P_abs_maxwell_t6","P_rf_raw_W_t6","P_rf_scaled_W_t6"):
+        q=report["csv"][key]
+        assert abs(q["delta"])<=1e-12+1e-9*abs(q["baseline"]),(key,q)
+    report["status"]="RF_COINCIDENT_TRANSFER_AND_FIELD_PARITY_PASS"
+    report["baseline_roundoff_limit"]="four binary64 ULPs at field scale; direct transfer remains exact"
+    (root/"parent-exodus-diagnostic.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("RF_COINCIDENT_TRANSFER_AND_FIELD_PARITY_PASS")
 finally:
     for obj in (a,b,c,d):obj.close()

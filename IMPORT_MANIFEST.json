@@ -1679,7 +1679,7 @@
       "scope": "application-only; native gradient and outward flow, fully developed neighbor handling; actual plasma parity pending; RF transfer unchanged"
     },
     "rf_transfer_fix": {
-      "status": "PENDING_NATIVE_VERIFICATION",
+      "status": "DIRECT_COPY_AND_RF_PARITY_EVIDENCE_VERIFIED_PENDING_GATE",
       "source_run": 46159528370,
       "previous_input_blob": "9c8e45dd66bca29952a30b8d375b71c2e4ba97de",
       "scope": "three Parent to Maxwell transfers only; source DOF direct copy with distance <=1e-12, no interpolation/extrapolation; source/target plasma topology and actual state checked",
@@ -1688,7 +1688,14 @@
         "mean_energy": "nodes",
         "pressure": "centroids"
       },
-      "qualification": "actual child diagnostic output compared with source frozen states and baseline at both frames; strict full-model parity remains unchanged"
+      "qualification": "actual child diagnostic output compared with source frozen states and baseline at both frames; strict full-model parity remains unchanged",
+      "evidence_run": 46167636036,
+      "baseline_comparison": "4 ULPs binary64 at field scale; exact direct transfer and frozen states remain required"
+    },
+    "fvm_physical_audit": {
+      "scope": "diagnostic overlay only, same original equations, native RHS residual norms and reconstructed mass balance, spatial error boundary vs interior; no acceptance threshold change",
+      "status": "PENDING",
+      "previous_run": 46167636036
     }
   }
 }

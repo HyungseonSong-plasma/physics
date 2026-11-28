@@ -27,7 +27,7 @@ for kind in "${kinds[@]}"; do
       source /environment
       export LD_LIBRARY_PATH=/workspace/app/test/lib:/workspace/app/lib:${LD_LIBRARY_PATH:-}
       exec /workspace/app/physics-opt "$@"
-    ' physics-opt "${extra[@]}" -i assets/input.i "${args[@]}" 2>&1 | tee "$out/$log"
+    ' physics-opt "${extra[@]}" -i assets/input.i /workspace/tests/mesh/fvm-conservation.i "${args[@]}" 2>&1 | tee "$out/$log"
     if test "$phase" = check; then grep -q 'Syntax OK' "$out/$log"; fi
   done
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$out:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/verify-flat.py /evidence'
@@ -35,6 +35,7 @@ done
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
 if test "$GITHUB_REF" = refs/heads/feature/parent-exodus; then
   # Separate child-enabled run: normal candidate still has exactly one output.
+  docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/diagnose-fvm-conservation.py /evidence'
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/diagnose-rf-transfer.py /evidence'
 fi
 mkdir "$RUNNER_TEMP/physics-exodus"
