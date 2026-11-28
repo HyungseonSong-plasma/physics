@@ -237,29 +237,6 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
   []
 []
 
-[Kernels]
-  [coil1_current]
-    type = BodyForce
-    variable = E_imag
-    block = coil1
-    value = ${source_imag}
-    postprocessor = rf_drive_scale_child
-  []
-  [coil2_current]
-    type = BodyForce
-    variable = E_imag
-    block = coil2
-    value = ${source_imag}
-    postprocessor = rf_drive_scale_child
-  []
-  [coil3_current]
-    type = BodyForce
-    variable = E_imag
-    block = coil3
-    value = ${source_imag}
-    postprocessor = rf_drive_scale_child
-  []
-[]
 
 
 [Postprocessors]
@@ -325,8 +302,7 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
     initial_condition = 1.3322
   []
 []
-# Action owns the six RF operators and zero-field boundaries.
-# Three coil-local BodyForce objects retain the live RF drive postprocessor.
+# Action owns RF operators, grounded boundaries and the three driven coil sources.
 [Physics]
   [Plasmas]
     [Maxwell]
@@ -335,6 +311,9 @@ source_imag = '${fparse -source_scale*omega_mu0*J_coil}'
       frequency_hz = ${frequency}
       reaction_material = neg_a
       coupling_material = b
+      coil_blocks = 'coil1 coil2 coil3'
+      imaginary_source = ${source_imag}
+      coil_drive_scale = rf_drive_scale_child
       ground_boundaries = 'axis outer_right outer_bottom outer_top'
     []
   []

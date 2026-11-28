@@ -1,5 +1,9 @@
 #include "MaxwellPhysics.h"
 
+#include <algorithm>
+#include <cmath>
+#include <set>
+
 namespace Plasma
 {
 
@@ -8,7 +12,7 @@ MaxwellPhysics::validParams()
 {
   InputParameters params = PlasmaInterface::validParams();
   params.addClassDescription(
-      "Checks existing maxwell inputs without creating or modifying solver equations.");
+      "Generates RF field operators, grounded boundaries and optional driven coil sources.");
   params.addRequiredParam<VariableName>(
       "field_real", "Existing solver variable for the real electromagnetic field.");
   params.addRequiredParam<VariableName>(
@@ -22,6 +26,10 @@ MaxwellPhysics::validParams()
       "coupling_material", "Existing RF cross-coupling coefficient b.");
   params.addParam<Real>(
       "imaginary_source", "Prescribed RF imaginary source in solver equation units.");
+  params.addParam<std::vector<SubdomainName>>(
+      "coil_blocks", "One imaginary BodyForce per driven coil block.");
+  params.addParam<PostprocessorName>(
+      "coil_drive_scale", "Live RF drive postprocessor shared by all driven coils.");
   params.addParam<std::vector<BoundaryName>>(
       "ground_boundaries", {}, "Zero-field boundaries for both RF components.");
   return params;
@@ -30,7 +38,7 @@ MaxwellPhysics::validParams()
 MaxwellPhysics::MaxwellPhysics(const InputParameters & parameters)
   : PlasmaInterface(parameters)
 {
-  if (getParam<Real>("frequency_hz") <= 0)
+  if (!std::isfinite(getParam<Real>("frequency_hz")) || getParam<Real>("frequency_hz") <= 0)
     paramError("frequency_hz", "The frequency must be greater than zero.");
   if (getParam<VariableName>("field_real").empty() ||
       getParam<VariableName>("field_imag").empty() ||
@@ -43,6 +51,24 @@ MaxwellPhysics::MaxwellPhysics(const InputParameters & parameters)
   if ((!getParam<std::vector<BoundaryName>>("ground_boundaries").empty() ||
        isParamValid("imaginary_source")) && !reaction)
     paramError("reaction_material", "Provide RF coefficients before creating sources or boundaries.");
+  const bool coils = isParamValid("coil_blocks");
+  const bool scale = isParamValid("coil_drive_scale");
+  if (coils != scale || (coils && !isParamValid("imaginary_source")))
+    paramError("coil_blocks", "Driven coils require coil_blocks, coil_drive_scale and imaginary_source together.");
+  if (isParamValid("imaginary_source") && !std::isfinite(getParam<Real>("imaginary_source")))
+    paramError("imaginary_source", "RF source must be finite.");
+  if (coils)
+  {
+    const auto & blocks = getParam<std::vector<SubdomainName>>("coil_blocks");
+    if (blocks.empty() || std::set<SubdomainName>(blocks.begin(), blocks.end()).size() != blocks.size())
+      paramError("coil_blocks", "Driven coil blocks must be nonempty and unique.");
+    if (getParam<PostprocessorName>("coil_drive_scale").empty())
+      paramError("coil_drive_scale", "A live RF drive postprocessor is required.");
+    if (!_blocks.empty())
+      for (const auto & block : blocks)
+        if (std::find(_blocks.begin(), _blocks.end(), block) == _blocks.end())
+          paramError("coil_blocks", "Driven coil block is outside Maxwell operator blocks: ", block);
+  }
 }
 
 void
@@ -108,8 +134,22 @@ MaxwellPhysics::addFEKernels()
     auto params = getFactory().getValidParams(type);
     params.set<NonlinearVariableName>("variable") = imag;
     params.set<Real>("value") = getParam<Real>("imaginary_source");
-    assignBlocks(params, _blocks);
-    getProblem().addKernel(type, name() + "_imaginary_source", params);
+    if (isParamValid("coil_blocks"))
+    {
+      params.set<PostprocessorName>("postprocessor") = getParam<PostprocessorName>("coil_drive_scale");
+      for (const auto & block : getParam<std::vector<SubdomainName>>("coil_blocks"))
+      {
+        auto local = params;
+        assignBlocks(local, std::vector<SubdomainName>{block});
+        getProblem().addKernel(type, block + "_current", local);
+      }
+    }
+    else
+    {
+      // Retain the legacy prescribed source on the Action's operator blocks.
+      assignBlocks(params, _blocks);
+      getProblem().addKernel(type, name() + "_imaginary_source", params);
+    }
   }
 }
 

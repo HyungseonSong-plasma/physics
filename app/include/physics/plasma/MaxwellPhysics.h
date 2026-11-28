@@ -6,7 +6,7 @@ namespace Plasma
 {
 
 /**
- * Validates existing maxwell simulation inputs without adding solver objects.
+ * Generates opt-in RF operators, grounded boundaries and driven coil sources.
  */
 class MaxwellPhysics : public PlasmaInterface
 {

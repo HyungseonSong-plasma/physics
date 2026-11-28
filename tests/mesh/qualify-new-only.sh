@@ -142,6 +142,21 @@ set -e
 test "$rc" -ne 0 && test "$rc" -ne 124
 grep -q "elastic coefficients must be finite and positive" "$ev/elastic-negative.log"
 echo ELASTIC_COEFFICIENT_NEGATIVE_PASS
+# Missing drive scale must reject the driven-coil configuration.
+badcoil="$RUNNER_TEMP/flat-coil-negative"
+mkdir "$badcoil"; cp -a assets "$badcoil/assets"
+sed -i '/coil_drive_scale = /d' "$badcoil/assets/maxwell.i"
+set +e
+timeout 480 docker run --rm "${opts[@]}" -v "$badcoil:/case" "$BASE_IMAGE" -lc '
+  source /environment
+  export LD_LIBRARY_PATH=/workspace/app/test/lib:/workspace/app/lib:${LD_LIBRARY_PATH:-}
+  exec /workspace/app/physics-opt "$@"
+' physics-opt --check-input -i assets/maxwell.i >"$ev/coil-negative.log" 2>&1
+rc=$?
+set -e
+test "$rc" -ne 0 && test "$rc" -ne 124
+grep -q "Driven coils require coil_blocks, coil_drive_scale and imaginary_source together" "$ev/coil-negative.log"
+echo MAXWELL_COIL_NEGATIVE_PASS
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
 if test "${#kinds[@]}" -eq 2; then
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/compare-unified.py /evidence'

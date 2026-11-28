@@ -865,7 +865,7 @@
       "source_path": "physics_app/include/physics/plasma/MaxwellPhysics.h",
       "path": "app/include/physics/plasma/MaxwellPhysics.h",
       "mode": "100644",
-      "blob": "37637d4587a6ba44e79c75f0a3af911a668f329a"
+      "blob": "fafc6d2555ee2a49291d992bd168abb015f80d46"
     },
     {
       "source_path": "physics_app/include/physics/plasma/NVTransport.h",
@@ -1243,7 +1243,7 @@
       "source_path": "physics_app/src/physics/plasma/MaxwellPhysics.C",
       "path": "app/src/physics/plasma/MaxwellPhysics.C",
       "mode": "100644",
-      "blob": "62521178f182a9a8b7cbdd434a4291fce07b0d2c"
+      "blob": "fa9ea7dc7d3e25386a1a2234b8330e24ca379ecb"
     },
     {
       "source_path": "physics_app/src/physics/plasma/NVTransport.C",
@@ -1491,14 +1491,14 @@
   },
   "new_only_assets": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "stage": "P6_CANDIDATE_ELASTIC_ENERGY",
+    "stage": "P7_CANDIDATE_MAXWELL_COIL_SOURCE",
     "candidate_blobs": {
       "assets/input.i": "a84e1dfd8db1ba6f3affbb03c81ac374af683ff9",
-      "assets/maxwell.i": "c317fbbb7a55eee52a22e65db7e6349c54f0cebd",
+      "assets/maxwell.i": "813d32c0b892c7b598f76dddfbb0d2dba6b1b091",
       "assets/chemistry.json": "121095f7932276b9fa843d9dfc9bf8332911d5c5",
       "assets/neutral_transport_aliases.txt": "98075edf56cbe7d3b5e96c531efe74277ffc0a37"
     },
-    "retained": "Native neutral reaction sources, H25, RF coil source, legacy variables and diagnostics. Exact historical elastic coefficients preserved; no constant recalibration.",
+    "retained": "Native RF constitutive materials, parent-child transfers, drive controller and receiver, neutral reaction source kernels, H25, variables and diagnostics. Exact existing coil amplitude expression preserved.",
     "science": "SCIENCE_HOLD",
     "source_delta": [
       {
@@ -1542,6 +1542,18 @@
         "prior_blob": "43c69ed13dc923a5839df80afce0259cf721f5fe",
         "candidate_blob": "1bd23ba9323d47cfcc8b3ae379919c54e958ad19",
         "reason": "Chemistry-owned signed elastic transfer preserving exact historical coefficient and diagnostic names."
+      },
+      {
+        "path": "app/src/physics/plasma/MaxwellPhysics.C",
+        "prior_blob": "62521178f182a9a8b7cbdd434a4291fce07b0d2c",
+        "candidate_blob": "fa9ea7dc7d3e25386a1a2234b8330e24ca379ecb",
+        "reason": "Move three coil-local BodyForce objects and live RF scale binding into Maxwell Action; preserve names, signed amplitude and legacy prescribed source."
+      },
+      {
+        "path": "app/include/physics/plasma/MaxwellPhysics.h",
+        "prior_blob": "37637d4587a6ba44e79c75f0a3af911a668f329a",
+        "candidate_blob": "fafc6d2555ee2a49291d992bd168abb015f80d46",
+        "reason": "Move three coil-local BodyForce objects and live RF scale binding into Maxwell Action; preserve names, signed amplitude and legacy prescribed source."
       }
     ],
     "alias_projection": {
