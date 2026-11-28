@@ -11,12 +11,18 @@
     type = FileMeshGenerator
     file = 'mesh.msh'
   []
+  [parent_blocks]
+    type = BlockDeletionGenerator
+    input = main
+    operation = keep
+    block = 'plasma cover wafer focus_ring vacuum coil1 coil2 coil3'
+  []
   [plasma_cover_owner]
     type = SideSetsBetweenSubdomainsGenerator
     primary_block = plasma
     paired_block = cover
     new_boundary = plasma_cover_owner
-    input = main
+    input = parent_blocks
   []
   [plasma_wafer_owner]
     type = SideSetsBetweenSubdomainsGenerator

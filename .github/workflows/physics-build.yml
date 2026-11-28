@@ -1,7 +1,7 @@
 name: Physics native build and flat assets
 on:
   push:
-    branches: [migration/app-assets, main]
+    branches: [migration/unified-mesh, main]
     paths: ['app/**', 'assets/**', 'tests/**', 'build-base/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
   workflow_dispatch:
 permissions:
@@ -49,13 +49,15 @@ jobs:
           for e in m["included"]:
               if e["path"].startswith("assets/"): assert blob(e["path"])==e["blob"],e["path"]
           for e in m["additional_assets"]:
-              expected_blob=m["conformal_maxwell"]["candidate_blob"] if e["path"]=="assets/maxwell.msh" else e["blob"]
+              if e["path"]=="assets/maxwell.msh": continue  # historical source; now unified
+              expected_blob=e["blob"]
               assert blob(e["path"])==expected_blob,e["path"]
-          for p,digest in m["flat_input_qualification"]["files"].items():
+          for p,digest in m["unified_mesh"]["files"].items():
               assert hashlib.sha256(pathlib.Path("assets",p).read_bytes()).hexdigest()==digest,p
-          for p in ("physics_app","runtime-image","database","assets/database","assets/chemistry","app/database"):
+          for p in ("physics_app","runtime-image","database","assets/database","assets/chemistry","app/database","assets/maxwell.msh"):
               assert not pathlib.Path(p).exists(),p
-          assert blob("assets/mesh.msh")=="1674286d95b5031651c74c0ff38667626d5549f5"
+          assert blob("assets/mesh.msh")==m["unified_mesh"]["candidate_blob"]
+          assert hashlib.sha256(pathlib.Path("assets/mesh.msh").read_bytes()).hexdigest()==m["unified_mesh"]["mesh_sha256"]
           print("FLAT_ASSET_IDENTITY_PASS")
           expected_lock = dict(MOOSE="9f388366ccf38b9c34542ec5561198249fde0ac9",
               CRANE="ba26970cf419dcac563a20ed7079d445bc6341c3",
@@ -123,9 +125,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash -n tests/mesh/qualify-flat.sh
-          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/compare-physics.py tests/mesh/exodus-reader.py
-          bash tests/mesh/qualify-flat.sh
+          (cd assets && sha256sum -c mesh.sha256)
+          bash -n tests/mesh/qualify-unified.sh
+          python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/compare-unified.py tests/mesh/exodus-reader.py
+          bash tests/mesh/qualify-unified.sh
       - name: Upload bounded evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

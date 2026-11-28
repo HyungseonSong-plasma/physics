@@ -1390,7 +1390,7 @@
   },
   "previous_import_head": "fd8468c346ec219ca4acd127de4d578dfc252d93",
   "layout_issue": 6,
-  "layout_status": "NATIVE_BUILD_AND_FLAT_ASSETS_BOUNDED_PARITY_PASS_ON_ORIGINAL_MESH; CONFORMAL_CANDIDATE_STAGED; FINAL_NATIVE_RECHECK_PENDING; SCIENCE_HOLD",
+  "layout_status": "UNIFIED_MESH_CANDIDATE_GEOMETRY_PASS; NATIVE_RECHECK_PENDING; SCIENCE_HOLD",
   "additional_assets": [
     {
       "source_repository": "HyungseonSong-plasma/moose-test-repo",
@@ -1467,5 +1467,20 @@
       "E_real_relative_l2": 0.0023155274593820445,
       "E_imag_relative_l2": 0.002817201039870806
     }
+  },
+  "unified_mesh": {
+    "source_commit": "95949734dc6954108d87deb5ed6e2f750bd990b7",
+    "original_parent_blob": "1674286d95b5031651c74c0ff38667626d5549f5",
+    "original_maxwell_blob": "da8af4354d7cef5552bc7efccf3baf0da7d564bd",
+    "candidate_blob": "c8967084bdaace3c4178f364b6f402db2b1358a5",
+    "mesh_sha256": "f9f497af1c818b1ba867abe464531eaac69330783beb6d20ba8b0ae5051edfc2",
+    "files": {
+      "input.i": "30dd1cbaf6c51d4d0b6fe269e779cc3b8b0dcedb3974994c6265aa7ec4b3613d",
+      "maxwell.i": "5ffeb1190a06f96d653506858741d229f6940d645258a1fae83fa065fa3ef848",
+      "chemistry.json": "4388e3251eb9d85eee866e8fbd58abd8bf3569dcd561551c36f57296a890de33"
+    },
+    "report": "tests/mesh/unified-report.json",
+    "axis_orphan_segments_reconstructed": 19,
+    "acceptance": "Static geometry only; native comparison pending; no science threshold."
   }
 }
