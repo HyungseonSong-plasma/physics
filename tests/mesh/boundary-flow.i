@@ -24,17 +24,17 @@
 []
 [Variables]
   [u]
-    type = INSFVVelocityVariable
+    type = BoundaryINSFVVelocityVariable
     block = active
     initial_condition = 2
   []
   [v]
-    type = INSFVVelocityVariable
+    type = BoundaryINSFVVelocityVariable
     block = active
     initial_condition = 0
   []
   [pressure]
-    type = INSFVPressureVariable
+    type = BoundaryINSFVPressureVariable
     block = active
     initial_condition = 1
   []
@@ -76,7 +76,7 @@
 []
 [Postprocessors]
   [volume_flow]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = active_interface
     vel_x = u
     vel_y = v
@@ -87,7 +87,7 @@
     execute_on = INITIAL
   []
   [quantity_flow]
-    type = VolumetricFlowRate
+    type = BoundaryVolumetricFlowRate
     boundary = active_interface
     vel_x = u
     vel_y = v

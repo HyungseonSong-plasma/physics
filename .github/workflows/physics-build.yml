@@ -1,4 +1,4 @@
-name: Patched MOOSE boundary gradient and flow qualification
+name: Application boundary variable and flow qualification
 run-name: Physics native CI / ${{ github.ref_name }} / ${{ github.sha }}
 on:
   push:
@@ -95,7 +95,7 @@ jobs:
           test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.squirrel.sha" }}')" = "16a26d504f3ee11161a86d4e3ebf3c0e5f2afbb1"
           test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.zapdos.sha" }}')" = "9eceffbc46048c3760bbfa9a7f1ca681ae35af1d"
           { echo "$BASE_IMAGE"; docker image inspect "$BASE_IMAGE" --format '{{.Id}} {{.Size}}'; df -h /; } | tee -a "$RUNNER_TEMP/physics-evidence/provenance.txt"
-      - name: Rebuild pinned MOOSE with diagnostic patch and verify native gradient
+      - name: Build application against unchanged MOOSE and verify boundary extensions
         shell: bash
         run: |
           set -euo pipefail
@@ -115,13 +115,7 @@ jobs:
               test ! -e physics-opt
               c++ --version | head -1
               date -u
-              python3 /workspace/tests/mesh/apply-boundary-gradient-patch.py "$MOOSE_DIR" | tee /evidence/moose-patch.log
-              python3 /workspace/tests/mesh/apply-boundary-flow-patch.py "$MOOSE_DIR" | tee /evidence/moose-flow-patch.log
               make -j2 app_non_unity_dirs="%/utils" 2>&1 | tee /evidence/build.log
-              grep -E "Compiling.*(MooseVariableFV|variables_Unity)" /evidence/build.log
-              git -C "$MOOSE_DIR" diff -- framework/src/variables/MooseVariableFV.C > /evidence/moose-gradient.diff
-              git -C "$MOOSE_DIR" diff -- modules/navier_stokes/src/postprocessors/VolumetricFlowRate.C > /evidence/moose-flow.diff
-              grep -E "Compiling.*(VolumetricFlowRate|postprocessors_Unity)" /evidence/build.log
               test -x physics-opt
               sha256sum physics-opt | tee /evidence/executable.sha256
               export LD_LIBRARY_PATH="$PWD/test/lib:$PWD/lib:${LD_LIBRARY_PATH:-}"
@@ -138,15 +132,18 @@ jobs:
               test "$rc" -ne 0 && test "$rc" -ne 124
               grep -q InvalidPhysicsPilotObject /evidence/negative.log
               echo PHYSICS_NATIVE_BUILD_AND_SMOKE_PASS
+              git -C "$MOOSE_DIR" diff --exit-code HEAD --
               bash /workspace/tests/mesh/verify-boundary-gradient.sh
               bash /workspace/tests/mesh/verify-boundary-flow.sh
+              git -C "$MOOSE_DIR" diff --exit-code HEAD --
+              echo MOOSE_TRACKED_SOURCE_UNCHANGED_PASS
               date -u
             '
       - name: Upload bounded evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: patched-moose-boundary-evidence
+          name: app-boundary-extension-evidence
           path: ${{ runner.temp }}/physics-evidence/
           if-no-files-found: warn
           retention-days: 30

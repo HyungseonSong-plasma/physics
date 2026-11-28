@@ -23,9 +23,7 @@
 []
 [Variables]
   [v]
-    family = MONOMIAL
-    order = CONSTANT
-    fv = true
+    type = BoundaryINSFVScalarFieldVariable
     block = active
     initial_condition = 1
     # MooseVariableFV uses two_term_boundary_expansion=true by default.

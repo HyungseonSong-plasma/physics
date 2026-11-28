@@ -21,4 +21,4 @@ for case,directions in data.items():
         sign=1 if direction=="outflow" else -1
         for key,expected in (("volume_flow",2*sign),("quantity_flow",6*sign)):
             assert math.isfinite(d[key]) and abs(d[key]-expected)<1e-10,(case,direction,key,d)
-print("PATCHED_NATIVE_VOLUMETRIC_FLOW_RATE_PASS")
+print("APP_BOUNDARY_VOLUMETRIC_FLOW_RATE_PASS")

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Same container as patched MOOSE and native application.
+# Same container as the unmodified MOOSE and native application.
 set -euo pipefail
 ev=/evidence/flow
 mkdir -p "$ev"

@@ -1615,6 +1615,30 @@
           "mode": "100644",
           "original_blob": null,
           "blob": "7ab19c1657d145ab03d8501c726ae21a7af925a1"
+        },
+        {
+          "path": "app/include/variables/BoundaryFVVariables.h",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "27fc125c90b4a2412c4abc24671dabf59e55b5b6"
+        },
+        {
+          "path": "app/src/variables/BoundaryFVVariables.C",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "35b6187468ef9b52e5d60e86a95d5a523d9157f3"
+        },
+        {
+          "path": "app/include/postprocessors/BoundaryVolumetricFlowRate.h",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "048b8ae1820dcf5f4d79c0cc6da93c4763709ef9"
+        },
+        {
+          "path": "app/src/postprocessors/BoundaryVolumetricFlowRate.C",
+          "mode": "100644",
+          "original_blob": null,
+          "blob": "29b615468481b730beccf27d012056a253f45275"
         }
       ]
     },
@@ -1632,20 +1656,34 @@
         "reason": "Remove unused explicit two_term_boundary_expansion from inferred variable action; pinned MooseVariableFV constructor and validParams both default true.",
         "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9"
       },
-      "framework_patch": {
-        "scope": "disposable CI container only, rebuild linked framework, no dependency lock change or image publication",
-        "prior_pass_run": 46162765619,
-        "source_path": "framework/src/variables/MooseVariableFV.C",
-        "original_blob": "9b3439e294122c771c43630cf4efc19fdbe34b5a",
-        "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9",
-        "verification": "native adGradSln and normal flux <= 1e-10 on both owner orientations, initial and solved state"
+      "historical_framework_patch": {
+        "gradient": {
+          "scope": "disposable CI container only, rebuild linked framework, no dependency lock change or image publication",
+          "prior_pass_run": 46162765619,
+          "source_path": "framework/src/variables/MooseVariableFV.C",
+          "original_blob": "9b3439e294122c771c43630cf4efc19fdbe34b5a",
+          "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9",
+          "verification": "native adGradSln and normal flux <= 1e-10 on both owner orientations, initial and solved state"
+        },
+        "flow": {
+          "scope": "disposable CI only; one-sided flow-domain outward reporting; retain FaceInfo-oriented upwind and two-sided behavior; no production dependency change",
+          "source_path": "modules/navier_stokes/src/postprocessors/VolumetricFlowRate.C",
+          "original_blob": "c0f8eb4b2c3b1d103b860350a985d4937752a6d3",
+          "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9",
+          "verification": "actual VolumetricFlowRate with native Rhie-Chow provider average mode, prescribed velocity +/-2 and quantity 3, unit face, both ownership orientations and exterior"
+        },
+        "status": "superseded by application subclasses; original commits retained"
       },
-      "flow_patch": {
-        "scope": "disposable CI only; one-sided flow-domain outward reporting; retain FaceInfo-oriented upwind and two-sided behavior; no production dependency change",
-        "source_path": "modules/navier_stokes/src/postprocessors/VolumetricFlowRate.C",
-        "original_blob": "c0f8eb4b2c3b1d103b860350a985d4937752a6d3",
-        "moose_ref": "9f388366ccf38b9c34542ec5561198249fde0ac9",
-        "verification": "actual VolumetricFlowRate with native Rhie-Chow provider average mode, prescribed velocity +/-2 and quantity 3, unit face, both ownership orientations and exterior"
+      "application_extensions": {
+        "scope": "application subclasses only; upstream source and dependency lock unchanged; diagnostic branch",
+        "classes": [
+          "BoundaryINSFVVelocityVariable",
+          "BoundaryINSFVPressureVariable",
+          "BoundaryINSFVScalarFieldVariable",
+          "BoundaryVolumetricFlowRate"
+        ],
+        "includes_fully_developed_neighbor_fix": true,
+        "production_input_not_changed": true
       }
     }
   }

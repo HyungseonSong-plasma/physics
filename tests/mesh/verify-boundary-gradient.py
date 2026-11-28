@@ -26,7 +26,7 @@ else:
         with (root/case/"probe.csv").open() as f: rows=list(csv.DictReader(f))
         assert len(rows)==2 and [float(r["time"]) for r in rows]==[0,1],(case,rows)
         data[case]={phase:{k:float(v) for k,v in r.items()} for phase,r in zip(("initial","solved"),rows)}
-    report={"scope":"native scalar FV, single skew TRI3 interface, affine manufactured state; patched native gradient; initial and solved state","exact_gradient":[2,3,0],"cases":data}
+    report={"scope":"native scalar FV, single skew TRI3 interface, affine manufactured state; application-derived variable gradient; initial and solved state","exact_gradient":[2,3,0],"cases":data}
     (root/"gradient-report.json").write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print(json.dumps(report,indent=2,sort_keys=True))
     for case,phases in data.items():
@@ -36,4 +36,4 @@ else:
                 assert d[metric]<1e-10,(case,phase,metric,d)
     for phase in ("initial","solved"):
         assert {round(data[c][phase]["active_owner"]) for c in cases[1:]}=={0,1},"Both FaceInfo ownership orientations not exercised"
-    print("PATCHED_MOOSE_NATIVE_BOUNDARY_GRADIENT_PASS")
+    print("APP_BOUNDARY_GRADIENT_PASS")
