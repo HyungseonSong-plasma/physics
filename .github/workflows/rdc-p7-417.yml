@@ -1,8 +1,8 @@
-name: S6-417 conformal Maxwell mesh comparison
+name: S6-417 flat assets and native app qualification
 on:
   push:
-    branches: [test/maxwell-conformal-physics]
-    paths: ['.github/workflows/rdc-p7-417.yml', 'tests/mesh/**']
+    branches: [test/flat-assets-native]
+    paths: ['.github/workflows/rdc-p7-417.yml', 'tests/flat-assets/**']
 permissions:
   contents: read
   actions: read
@@ -220,12 +220,43 @@ jobs:
           test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.squirrel.sha" }}')" = "16a26d504f3ee11161a86d4e3ebf3c0e5f2afbb1"
           test "$(docker image inspect "$BASE_IMAGE" --format '{{ index .Config.Labels "io.physics.zapdos.sha" }}')" = "9eceffbc46048c3760bbfa9a7f1ca681ae35af1d"
           { echo "$BASE_IMAGE"; docker image inspect "$BASE_IMAGE" --format '{{.Id}} {{.Size}}'; df -h /; } | tee -a "$RUNNER_TEMP/physics-evidence/provenance.txt"
+      - name: Checkout relocated app and assets at immutable layout head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: bbe1d53f35dca500e508dbf33aab095b0e1c950a
+          path: layout
+          persist-credentials: false
+      - name: Verify relocated source blobs and flat data inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C layout rev-parse HEAD)" = bbe1d53f35dca500e508dbf33aab095b0e1c950a
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          root=pathlib.Path("layout")
+          m=json.loads((root/"IMPORT_MANIFEST.json").read_text())
+          tree={}
+          for line in subprocess.check_output(["git","-C",str(root),"ls-tree","-rz","HEAD"]).split(b"\0"):
+              if not line: continue
+              meta,p=line.split(b"\t",1)
+              mode,typ,sha=meta.decode().split()
+              assert typ=="blob"
+              tree[p.decode()]=(mode,sha)
+          assert len(m["included"])==221
+          for e in m["included"]:
+              assert tree[e["path"]]==(e["mode"],e["blob"]),e["path"]
+          for e in m["additional_assets"]:
+              assert tree[e["path"]][1]==e["blob"],e["path"]
+          assert not any(p.startswith(("physics_app/","runtime-image/","assets/chemistry/")) or "/database/" in p for p in tree)
+          print("RELOCATED_LAYOUT_BLOB_PASS")
+          PY
+          sha256sum layout/IMPORT_MANIFEST.json >>"$RUNNER_TEMP/physics-evidence/provenance.txt"
       - name: Compile Physics and verify native smoke
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm --network none --entrypoint /bin/bash --user 0:0 --workdir /workspace/physics_app \
-            -e GITHUB_SHA="$GITHUB_SHA" -v "$PWD:/workspace" -v "$RUNNER_TEMP/physics-evidence:/evidence" \
+          docker run --rm --network none --entrypoint /bin/bash --user 0:0 --workdir /workspace/app \
+            -e GITHUB_SHA="bbe1d53f35dca500e508dbf33aab095b0e1c950a" -v "$PWD/layout:/workspace" -v "$RUNNER_TEMP/physics-evidence:/evidence" \
             "$BASE_IMAGE" -lc '
               set -euo pipefail
               source /environment
@@ -259,110 +290,7 @@ jobs:
               echo PHYSICS_NATIVE_BUILD_AND_SMOKE_PASS
               date -u
             '
-      - name: Collect runtime closure and native database baseline
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir runtime-image/runtime-root
-          ev="$RUNNER_TEMP/physics-evidence"
-          docker run --rm --network none --entrypoint /bin/bash --user 0:0 \
-            -v "$PWD/physics_app:/opt/physics:ro" \
-            -v "$PWD/runtime-image/collect-runtime.sh:/usr/local/bin/collect-runtime:ro" \
-            -v "$PWD/runtime-image/database-smoke.i:/database-smoke.i:ro" \
-            -v "$PWD/runtime-image/runtime-root:/runtime-root" \
-            -v "$ev:/evidence" "$BASE_IMAGE" -lc '
-              set -euo pipefail
-              source /environment
-              export LD_LIBRARY_PATH="/opt/physics/test/lib:/opt/physics/lib:${LD_LIBRARY_PATH:-}"
-              timeout 180 /opt/physics/physics-opt -i /database-smoke.i Outputs/file_base=/evidence/native-db 2>&1 | tee /evidence/native-db.log
-              bash /usr/local/bin/collect-runtime /runtime-root
-            '
-          sudo cp runtime-image/database-smoke.i runtime-image/runtime-root/opt/physics/ci/runtime-database-smoke.i
-          sudo cp UPSTREAM_NOTICES.md runtime-image/runtime-root/opt/physics/UPSTREAM_NOTICES.md
-          sudo cp IMPORT_MANIFEST.json runtime-image/runtime-root/opt/physics/IMPORT_MANIFEST.json
-          sudo cp runtime-image/runtime-root/opt/physics/RUNTIME_CLOSURE.txt "$ev/"
-          {
-            echo "PHYSICS_REPOSITORY=$GITHUB_REPOSITORY"
-            echo "PHYSICS_REVISION=$GITHUB_SHA"
-            echo "UPSTREAM_PR903=f55bd9fe32023f21a4c2d0c571b51e9e077f5475"
-            echo "BUILD_BASE=$BASE_IMAGE"
-            echo "SOURCE_MANIFEST_SHA256=$(sha256sum IMPORT_MANIFEST.json | cut -d' ' -f1)"
-            cat "$ev/executable.sha256"
-          } | sudo tee runtime-image/runtime-root/opt/physics/RUNTIME_PROVENANCE.txt | tee "$ev/RUNTIME_PROVENANCE.txt"
-          test -s "$ev/native-db.csv"
-          df -h /
-      - name: Build local scratch runtime and verify isolated execution
-        shell: bash
-        run: |
-          set -euo pipefail
-          ev="$RUNNER_TEMP/physics-evidence"
-          image="physics-runtime:ci-$GITHUB_SHA"
-          manifest="$(sha256sum IMPORT_MANIFEST.json | cut -d' ' -f1)"
-          docker build --network none --platform linux/amd64 \
-            --build-arg BUILD_BASE_REF="$BASE_IMAGE" \
-            --build-arg REPOSITORY_SHA="$GITHUB_SHA" \
-            --build-arg PHYSICS_SOURCE_MANIFEST_SHA256="$manifest" \
-            -t "$image" runtime-image
-          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$GITHUB_SHA"
-          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "io.physics.source.manifest-sha256" }}')" = "$manifest"
-          test "$(docker image inspect "$image" --format '{{ index .Config.Labels "io.physics.source.owner" }}')" = "physics/physics_app"
-          docker image inspect "$image" --format '{{.Id}} {{.Size}} {{.Os}}/{{.Architecture}}' | tee "$ev/runtime-image.txt"
-          cid="$(docker create "$image")"
-          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
-          mkdir "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db"
-          docker cp "$cid:/opt/physics/database/." "$RUNNER_TEMP/runtime-db"
-          docker cp "$cid:/opt/share/physics/database/." "$RUNNER_TEMP/installed-db"
-          docker cp "$cid:/opt/physics/physics-opt" "$RUNNER_TEMP/runtime-physics-opt"
-          test "$(sha256sum "$RUNNER_TEMP/runtime-physics-opt" | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
-          docker rm "$cid"
-          trap - EXIT
-          timeout 180 docker run --rm --network none "$image" --check-input -i /opt/physics/ci/smoke.i 2>&1 | tee "$ev/runtime-check-input.log"
-          timeout 180 docker run --rm --network none "$image" -i /opt/physics/ci/smoke.i 2>&1 | tee "$ev/runtime-steady.log"
-          timeout 180 docker run --rm --network none "$image" --check-input -i /opt/physics/ci/species_wall_functor_naming_smoke.i 2>&1 | tee "$ev/runtime-app-construction.log"
-          timeout 180 docker run --rm --network none -v "$ev:/evidence" "$image" -i /opt/physics/ci/runtime-database-smoke.i Outputs/file_base=/evidence/runtime-db 2>&1 | tee "$ev/runtime-db.log"
-          python3 runtime-image/verify-runtime.py "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db" "$ev/native-db.csv" "$ev/runtime-db.csv" | tee "$ev/runtime-verification.txt"
-          echo PHYSICS_ISOLATED_RUNTIME_PASS
-      - name: Build JIT-capable diagnostic runtime using pinned build base
-        shell: bash
-        run: |
-          set -euo pipefail
-          ev="$RUNNER_TEMP/physics-evidence"
-          scratch="physics-runtime:ci-$GITHUB_SHA"
-          image="physics-runtime-jit:ci-$GITHUB_SHA"
-          # Use the already verified binary/data closure and the same immutable
-          # compiler, shell and headers. Keep dependency libs from the base.
-          # This diagnostic is intentionally not the final minimal JIT closure.
-          docker build --network none --platform linux/amd64 \
-            --build-arg BASE_IMAGE="$BASE_IMAGE" \
-            --build-arg REPOSITORY_SHA="$GITHUB_SHA" \
-            -t "$image" -f - runtime-image <<'DOCKERFILE'
-          ARG BASE_IMAGE
-          FROM ${BASE_IMAGE}
-          ARG REPOSITORY_SHA
-          LABEL org.opencontainers.image.source="https://github.com/HyungseonSong-plasma/physics" \
-                org.opencontainers.image.revision="${REPOSITORY_SHA}" \
-                io.physics.runtime.mode="jit-diagnostic-build-base"
-          COPY runtime-root/opt/physics/ /opt/physics/
-          ENV OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
-          WORKDIR /work
-          ENTRYPOINT ["/bin/bash","-lc","set -euo pipefail; source /environment; export LD_LIBRARY_PATH=/opt/physics/test/lib:/opt/physics/lib:${LD_LIBRARY_PATH:-}; exec /opt/physics/physics-opt \"$@\"","physics-opt"]
-          DOCKERFILE
-          docker image inspect "$image" --format '{{.Id}} {{.Size}} {{.Os}}/{{.Architecture}}' | tee "$ev/jit-runtime-image.txt"
-          docker run --rm --network none --entrypoint /bin/bash "$image" -lc '
-            set -euo pipefail
-            source /environment
-            command -v c++
-            c++ --version | head -1
-            test -r /opt/physics_vendor/moose/framework/include/utils/ADReal.h
-            find /opt/physics_vendor/moose/framework -name MooseConfig.h -print -quit
-            sha256sum /opt/physics/physics-opt
-          ' | tee "$ev/jit-runtime-toolchain.txt"
-          test "$(tail -1 "$ev/jit-runtime-toolchain.txt" | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
-          timeout 180 docker run --rm --network none "$image" -i /opt/physics/ci/smoke.i 2>&1 | tee "$ev/jit-runtime-steady.log"
-          timeout 180 docker run --rm --network none -v "$ev:/evidence" "$image" -i /opt/physics/ci/runtime-database-smoke.i Outputs/file_base=/evidence/jit-db 2>&1 | tee "$ev/jit-runtime-db.log"
-          python3 runtime-image/verify-runtime.py "$RUNNER_TEMP/runtime-db" "$RUNNER_TEMP/installed-db" "$ev/native-db.csv" "$ev/jit-db.csv" | tee "$ev/jit-runtime-verification.txt"
-          docker image rm "$scratch" || true
-      - name: Stage exact public EI candidate and run S6-417 in JIT-capable runtime
+      - name: Stage exact public EI candidate (baseline only)
         shell: bash
         run: |
           set -euo pipefail
@@ -386,24 +314,88 @@ jobs:
           print("NEWONLY_417_PUBLIC_STAGE_PASS")
           PY
 
-      - name: Reproduce and verify conformal mesh against original staged meshes
+      - name: Retrieve verified parent HIT input and qualify flat layout
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          stage="$RUNNER_TEMP/newonly-417"
-          original="$stage/experiments/Issue18_qvt_plasma_mapping/qvt.msh"
-          test "$(git hash-object "$original")" = 28ff31220904ff81f426d0c2ed8dd18a7fd40b9e
-          node tests/mesh/conform-maxwell.js assets/mesh.msh "$original" "$RUNNER_TEMP/maxwell-reproduced.msh" >"$RUNNER_TEMP/physics-evidence/conformal-replay.json"
-          cmp "$RUNNER_TEMP/maxwell-reproduced.msh" tests/mesh/maxwell-conformal.msh
-          cp tests/mesh/conformal-report.json "$RUNNER_TEMP/physics-evidence/"
-      - name: Run identical baseline and conformal Maxwell candidate
-        shell: bash
-        run: bash tests/mesh/compare-physics.sh
-      - name: Upload bounded mesh comparison evidence
+          bash -n tests/flat-assets/qualify.sh
+          python3 -m py_compile tests/flat-assets/normalize.py
+          curl --fail --location --silent --show-error --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/15240938520/zip" \
+            --output "$RUNNER_TEMP/verified-parent.zip"
+          echo "5ccb9088cb3039d6b13dc030e410cbef7812404cc061dfa45d7437fffda8c5e5  $RUNNER_TEMP/verified-parent.zip" | sha256sum --check -
+          bash tests/flat-assets/qualify.sh
+      - name: Upload bounded qualification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: maxwell-conformal-physics-evidence
+          name: flat-assets-native-evidence
           path: ${{ runner.temp }}/physics-evidence/
           if-no-files-found: warn
           retention-days: 30
+      - name: Export qualified input assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: qualified-flat-inputs
+          path: ${{ runner.temp }}/qualified-flat-inputs/
+          if-no-files-found: error
+          retention-days: 30
+  publish:
+    needs: build
+    if: ${{ github.repository_id == '1474679185' && github.actor_id == '189476866' && github.run_attempt == '1' && github.ref == 'refs/heads/test/flat-assets-native' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Checkout exact destination head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: bbe1d53f35dca500e508dbf33aab095b0e1c950a
+          persist-credentials: true
+      - name: Verify qualified bundle and publish only approved assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = bbe1d53f35dca500e508dbf33aab095b0e1c950a
+          test "$(git ls-remote origin refs/heads/migration/app-assets | cut -f1)" = bbe1d53f35dca500e508dbf33aab095b0e1c950a
+          mkdir "$RUNNER_TEMP/publish"
+          id="$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" | jq -er '.artifacts | map(select(.name=="qualified-flat-inputs" and .expired==false)) | if length==1 then .[0].id else error("artifact count") end')"
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" -o "$RUNNER_TEMP/publish/bundle.zip"
+          python3 - "$RUNNER_TEMP/publish/bundle.zip" <<'PY'
+          import hashlib,json,pathlib,sys,zipfile,os
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          assets=pathlib.Path("assets")
+          names={"input.i","maxwell.i","chemistry.json"}
+          with zipfile.ZipFile(sys.argv[1]) as z:
+              assert set(z.namelist())==names|{"receipt.json"}
+              receipt=json.loads(z.read("receipt.json"))
+              assert receipt["status"]=="FLAT_ASSETS_NUMERICAL_EQUIVALENCE_PASS"
+              assert receipt["layout_commit"]=="bbe1d53f35dca500e508dbf33aab095b0e1c950a"
+              assert receipt["qualification_commit"]==os.environ["GITHUB_SHA"]
+              assert set(receipt["files"])==names
+              for name in sorted(names):
+                  raw=z.read(name)
+                  assert sha(raw)==receipt["files"][name]
+                  dest=assets/name
+                  assert not dest.exists()
+                  dest.write_bytes(raw)
+          mpath=pathlib.Path("IMPORT_MANIFEST.json")
+          m=json.loads(mpath.read_text())
+          m["flat_input_qualification"]=receipt
+          m["flat_input_qualification"]["actions_run_id"]=os.environ["GITHUB_RUN_ID"]
+          m["layout_status"]="NATIVE_BUILD_AND_FLAT_ASSETS_BOUNDED_PARITY_PASS; SCIENCE_HOLD; ORIGINAL_MAXWELL_MESH_RETAINED"
+          mpath.write_text(json.dumps(m,indent=2)+"\n")
+          PY
+          git add -- assets/input.i assets/maxwell.i assets/chemistry.json IMPORT_MANIFEST.json
+          test "$(git diff --cached --name-only | LC_ALL=C sort | tr '\n' ' ')" = "IMPORT_MANIFEST.json assets/chemistry.json assets/input.i assets/maxwell.i "
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Register qualified flat input assets (#6)"
+          git push origin HEAD:refs/heads/migration/app-assets
+          echo FLAT_ASSETS_PUBLISH_PASS
