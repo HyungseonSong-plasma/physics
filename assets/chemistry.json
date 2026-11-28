@@ -137,8 +137,10 @@
       },
       "units": "mol/(m^3 s)",
       "energy_loss_eV": {
-        "model": "functor",
-        "name": "delta_epsilon_EI02_eV"
+        "model": "elastic",
+        "exchange_factor": 0.000051429366456827657,
+        "kb_eV_K": 0.00008617333262145,
+        "diagnostic_source": "elastic_energy_source_EI02"
       },
       "rate": {
         "model": "lookup",
@@ -162,8 +164,10 @@
       },
       "units": "mol/(m^3 s)",
       "energy_loss_eV": {
-        "model": "functor",
-        "name": "delta_epsilon_EI17_eV"
+        "model": "elastic",
+        "exchange_factor": 0.00010285873291365531,
+        "kb_eV_K": 0.00008617333262145,
+        "diagnostic_source": "S_electron_energy_EI17"
       },
       "rate": {
         "model": "lookup",

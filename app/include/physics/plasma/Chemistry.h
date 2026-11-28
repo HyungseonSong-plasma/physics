@@ -145,6 +145,10 @@ struct ReactionRecord
   // A functor is an alternative positive-loss magnitude in eV/event.
   double energy_loss_eV = 0;
   std::string energy_loss_functor;
+  // Elastic transfer can be signed when the gas is hotter than electrons.
+  double elastic_exchange_factor = 0.0;
+  double elastic_kb_eV_K = 0.0;
+  std::string elastic_diagnostic_source;
   bool contributes_electron_energy = false;
 
   int net(const std::string & species) const;

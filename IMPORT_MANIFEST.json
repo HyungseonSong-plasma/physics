@@ -841,7 +841,7 @@
       "source_path": "physics_app/include/physics/plasma/Chemistry.h",
       "path": "app/include/physics/plasma/Chemistry.h",
       "mode": "100644",
-      "blob": "d3f1404aa1aef68aa5efae638c37bb36ef05c1aa"
+      "blob": "7d97bfcf44860a007f9d2283f61f32306be42969"
     },
     {
       "source_path": "physics_app/include/physics/plasma/DDContinuityEq.h",
@@ -1219,7 +1219,7 @@
       "source_path": "physics_app/src/physics/plasma/Chemistry.C",
       "path": "app/src/physics/plasma/Chemistry.C",
       "mode": "100644",
-      "blob": "43c69ed13dc923a5839df80afce0259cf721f5fe"
+      "blob": "1bd23ba9323d47cfcc8b3ae379919c54e958ad19"
     },
     {
       "source_path": "physics_app/src/physics/plasma/DDContinuityEq.C",
@@ -1491,14 +1491,14 @@
   },
   "new_only_assets": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "stage": "P5_CANDIDATE_CHEMISTRY_EI_LOOKUP",
+    "stage": "P6_CANDIDATE_ELASTIC_ENERGY",
     "candidate_blobs": {
-      "assets/input.i": "3f16e44bea2147002816965d69ac00a5a5bfcbb7",
+      "assets/input.i": "a84e1dfd8db1ba6f3affbb03c81ac374af683ff9",
       "assets/maxwell.i": "c317fbbb7a55eee52a22e65db7e6349c54f0cebd",
-      "assets/chemistry.json": "855eb3631d175e6046d18cc1a654a7ae60028726",
+      "assets/chemistry.json": "121095f7932276b9fa843d9dfc9bf8332911d5c5",
       "assets/neutral_transport_aliases.txt": "98075edf56cbe7d3b5e96c531efe74277ffc0a37"
     },
-    "retained": "Native elastic energy loss, reaction diagnostics and neutral reaction source kernels; H25, RF coil source; historical A/B table.",
+    "retained": "Native neutral reaction sources, H25, RF coil source, legacy variables and diagnostics. Exact historical elastic coefficients preserved; no constant recalibration.",
     "science": "SCIENCE_HOLD",
     "source_delta": [
       {
@@ -1530,6 +1530,18 @@
         "prior_blob": "b11a022ea149b63610cfafb3f770bbbcfaddab8e",
         "candidate_blob": "43c69ed13dc923a5839df80afce0259cf721f5fe",
         "reason": "Explicit validated O2a:O2s lookup binding, preserve native reaction IDs/tables."
+      },
+      {
+        "path": "app/include/physics/plasma/Chemistry.h",
+        "prior_blob": "d3f1404aa1aef68aa5efae638c37bb36ef05c1aa",
+        "candidate_blob": "7d97bfcf44860a007f9d2283f61f32306be42969",
+        "reason": "Chemistry-owned signed elastic transfer preserving exact historical coefficient and diagnostic names."
+      },
+      {
+        "path": "app/src/physics/plasma/Chemistry.C",
+        "prior_blob": "43c69ed13dc923a5839df80afce0259cf721f5fe",
+        "candidate_blob": "1bd23ba9323d47cfcc8b3ae379919c54e958ad19",
+        "reason": "Chemistry-owned signed elastic transfer preserving exact historical coefficient and diagnostic names."
       }
     ],
     "alias_projection": {

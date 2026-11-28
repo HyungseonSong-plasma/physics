@@ -122,6 +122,26 @@ set -e
 test "$rc" -ne 0 && test "$rc" -ne 124
 grep -q "Unbound EI target" "$ev/ei-negative.log"
 echo EI_TARGET_ALIAS_NEGATIVE_PASS
+# A malformed elastic coefficient must fail native input validation.
+badelastic="$RUNNER_TEMP/flat-elastic-negative"
+mkdir "$badelastic"; cp -a assets "$badelastic/assets"
+python3 - "$badelastic/assets/chemistry.json" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1]); j=json.loads(p.read_text())
+next(r for r in j["reactions"] if r["id"]=="EI-02")["energy_loss_eV"]["exchange_factor"]=-1
+p.write_text(json.dumps(j))
+PY
+set +e
+timeout 480 docker run --rm "${opts[@]}" -v "$badelastic:/case" "$BASE_IMAGE" -lc '
+  source /environment
+  export LD_LIBRARY_PATH=/workspace/app/test/lib:/workspace/app/lib:${LD_LIBRARY_PATH:-}
+  exec /workspace/app/physics-opt "$@"
+' physics-opt --check-input -i assets/input.i >"$ev/elastic-negative.log" 2>&1
+rc=$?
+set -e
+test "$rc" -ne 0 && test "$rc" -ne 124
+grep -q "elastic coefficients must be finite and positive" "$ev/elastic-negative.log"
+echo ELASTIC_COEFFICIENT_NEGATIVE_PASS
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
 if test "${#kinds[@]}" -eq 2; then
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/compare-unified.py /evidence'
@@ -139,6 +159,9 @@ import json,pathlib,sys
 j=json.loads((pathlib.Path(sys.argv[1])/"mesh-physics-comparison.json").read_text())
 keys={k:v for k,v in j["scalars"].items() if any(s in k.lower() for s in ("ei02","ei17","ei415","ei401","ei417","ei407","ei2069","h25"))}
 assert keys,"No reaction diagnostics"
+elastic={k:v for k,v in j["scalars"].items() if k.startswith(("elastic_","ei17_"))}
+assert {"elastic_energy_source_integral","ei17_energy_source_integral"}<=elastic.keys()
+print(json.dumps({"status":"ELASTIC_ENERGY_COMPARISON_MEASURED","scalars":elastic},sort_keys=True))
 print(json.dumps({"status":"EI_RATE_COMPARISON_MEASURED","scalars":keys},sort_keys=True))
 PY
 # Only publish after the native and field gates pass.

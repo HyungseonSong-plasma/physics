@@ -228,38 +228,6 @@
 
 
 
-  [ei02_delta_e]
-    type = ADParsedFunctorMaterial
-    property_name = delta_epsilon_EI02_eV
-    functor_names = 'e_energy_eV temperature'
-    functor_symbols = 'eps Tg'
-    expression = '5.1429366456827657e-05*((2.0/3.0)*eps-8.6173332621449999e-05*Tg)'
-    block = plasma
-  []
-  [ei02_energy_source]
-    type = ADParsedFunctorMaterial
-    property_name = elastic_energy_source_EI02
-    functor_names = 'delta_epsilon_EI02_eV R_EI02'
-    functor_symbols = 'de R'
-    expression = '-de*R'
-    block = plasma
-  []
-  [ei17_delta_energy]
-    type = ADParsedFunctorMaterial
-    property_name = delta_epsilon_EI17_eV
-    functor_names = 'e_energy_eV temperature'
-    functor_symbols = 'eps Tg'
-    expression = '0.00010285873291365531*((2.0/3.0)*eps-8.6173332621449999e-05*Tg)'
-    block = plasma
-  []
-  [ei17_electron_energy_exchange]
-    type = ADParsedFunctorMaterial
-    property_name = S_electron_energy_EI17
-    functor_names = 'delta_epsilon_EI17_eV R_EI17'
-    functor_symbols = 'de R'
-    expression = '-de*R'
-    block = plasma
-  []
   [ei415_electron_source]
     type = ADParsedFunctorMaterial
     property_name = S_electron_molar_EI415

@@ -1278,6 +1278,28 @@ ChemistryData::ChemistryData(const std::vector<std::string> & files,
           fail(file, reaction.id + ": electron energy loss must be finite and nonnegative");
         reaction.contributes_electron_energy = reaction.energy_loss_eV != 0.0;
       }
+      else if (energy.is_object() && energy.value("model", std::string()) == "elastic")
+      {
+        const std::set<std::string> allowed{"model", "exchange_factor", "kb_eV_K", "diagnostic_source"};
+        for (auto it = energy.begin(); it != energy.end(); ++it)
+          if (!allowed.count(it.key()))
+            fail(file, reaction.id + ": unsupported elastic energy key " + it.key());
+        if (reaction.domain != "volume" || reaction.rate.model != "lookup" ||
+            reaction.reactants != reaction.products ||
+            !energy.contains("exchange_factor") || !energy.at("exchange_factor").is_number() ||
+            !energy.contains("kb_eV_K") || !energy.at("kb_eV_K").is_number())
+          fail(file, reaction.id + ": elastic energy requires unchanged EI collision and numeric coefficients");
+        reaction.elastic_exchange_factor = energy.at("exchange_factor").get<double>();
+        reaction.elastic_kb_eV_K = energy.at("kb_eV_K").get<double>();
+        if (!std::isfinite(reaction.elastic_exchange_factor) || reaction.elastic_exchange_factor <= 0.0 ||
+            !std::isfinite(reaction.elastic_kb_eV_K) || reaction.elastic_kb_eV_K <= 0.0)
+          fail(file, reaction.id + ": elastic coefficients must be finite and positive");
+        reaction.energy_loss_functor = "delta_epsilon_" + reaction.progress.substr(2) + "_eV";
+        reaction.elastic_diagnostic_source = requiredText(energy, "diagnostic_source", file);
+        if (reaction.elastic_diagnostic_source.empty())
+          fail(file, reaction.id + ": empty elastic diagnostic source");
+        reaction.contributes_electron_energy = true;
+      }
       else if (energy.is_object() && energy.value("model", std::string()) == "functor" &&
                energy.contains("name") && energy["name"].is_string())
       {
@@ -1506,6 +1528,28 @@ Chemistry::addFunctorMaterials()
       assignBlocks(params, _blocks);
       getProblem().addFunctorMaterial(type, "chemistry_" + reaction.progress + "_lookup", params);
     }
+    if (reaction.elastic_exchange_factor > 0.0)
+    {
+      const std::string type = "ADParsedFunctorMaterial";
+      auto loss = getFactory().getValidParams(type);
+      loss.set<std::string>("property_name") = reaction.energy_loss_functor;
+      loss.set<std::vector<std::string>>("functor_names") = {"e_energy_eV", "temperature"};
+      loss.set<std::vector<std::string>>("functor_symbols") = {"eps", "Tg"};
+      loss.set<std::string>("expression") =
+          realLiteral(reaction.elastic_exchange_factor) + "*((2.0/3.0)*eps-" +
+          realLiteral(reaction.elastic_kb_eV_K) + "*Tg)";
+      assignBlocks(loss, _blocks);
+      getProblem().addFunctorMaterial(type, "chemistry_" + reaction.progress + "_elastic_loss", loss);
+      // Diagnostic only: the aggregate electron source remains the sole RHS owner.
+      auto diagnostic = getFactory().getValidParams(type);
+      diagnostic.set<std::string>("property_name") = reaction.elastic_diagnostic_source;
+      diagnostic.set<std::vector<std::string>>("functor_names") =
+          {reaction.energy_loss_functor, reaction.progress};
+      diagnostic.set<std::vector<std::string>>("functor_symbols") = {"de", "R"};
+      diagnostic.set<std::string>("expression") = "-de*R";
+      assignBlocks(diagnostic, _blocks);
+      getProblem().addFunctorMaterial(type, "chemistry_" + reaction.progress + "_elastic_diagnostic", diagnostic);
+    }
     std::set<std::string> touched;
     for (const auto & [id, coefficient] : reaction.reactants)
       touched.insert(id);
@@ -1527,7 +1571,7 @@ Chemistry::addFunctorMaterials()
       const auto progress = energy.symbol(reaction.progress);
       if (!reaction.energy_loss_functor.empty())
       {
-        // The source Functor is a POSITIVE energy-loss magnitude [eV/event].
+        // Loss convention [eV/event]; elastic transfer may be negative for a hot gas.
         // One negative sign is applied at the aggregate electron RHS only.
         const auto loss = energy.symbol(reaction.energy_loss_functor);
         energy.parts.push_back("(-1.0)*(" + loss + ")*" + progress);
