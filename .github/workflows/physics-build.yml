@@ -1,8 +1,8 @@
-name: Physics native build and flat assets
+name: Physics Parent Exodus diagnostic
 run-name: Physics native CI / ${{ github.ref_name }} / ${{ github.sha }}
 on:
   push:
-    branches: [feature/parent-exodus, main]
+    branches: [test/parent-exodus-diagnostics]
     paths: ['app/**', 'assets/**', 'tests/**', 'build-base/**', 'IMPORT_MANIFEST.json', '.github/workflows/physics-build.yml']
   workflow_dispatch:
 permissions:
@@ -139,21 +139,15 @@ jobs:
         run: |
           set -euo pipefail
           (cd assets && sha256sum -c mesh.sha256)
-          bash -n tests/mesh/qualify-parent-exodus.sh
+          bash -n tests/mesh/diagnose-parent-exodus.sh
           python3 -m py_compile tests/mesh/verify-flat.py tests/mesh/exodus-reader.py tests/mesh/verify-parent-exodus.py
-          bash tests/mesh/qualify-parent-exodus.sh
+          python3 -m py_compile tests/mesh/diagnose-parent-exodus.py
+          bash tests/mesh/diagnose-parent-exodus.sh
       - name: Upload bounded evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: physics-flat-assets-evidence
+          name: physics-parent-exodus-diagnostics
           path: ${{ runner.temp }}/physics-evidence/
           if-no-files-found: warn
-          retention-days: 30
-      - name: Upload verified Exodus results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: physics-exodus
-          path: ${{ runner.temp }}/physics-exodus/
-          if-no-files-found: error
           retention-days: 30
