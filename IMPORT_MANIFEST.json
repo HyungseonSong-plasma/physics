@@ -871,7 +871,7 @@
       "source_path": "physics_app/include/physics/plasma/NVTransport.h",
       "path": "app/include/physics/plasma/NVTransport.h",
       "mode": "100644",
-      "blob": "445b85975ddb31e6acf2f02d2bd2cbcfbd7619e0"
+      "blob": "fbc0b19a904b1c709bdf3e9c833f24142763a852"
     },
     {
       "source_path": "physics_app/include/physics/plasma/PlasmaInterface.h",
@@ -1249,7 +1249,7 @@
       "source_path": "physics_app/src/physics/plasma/NVTransport.C",
       "path": "app/src/physics/plasma/NVTransport.C",
       "mode": "100644",
-      "blob": "dfd2c21a8809e674387879fec7f15d230c05405a"
+      "blob": "6086ee0cfebb2d3b6ab0109f6d1ff51287e13421"
     },
     {
       "source_path": "physics_app/src/physics/plasma/PlasmaInterface.C",
@@ -1491,14 +1491,14 @@
   },
   "new_only_assets": {
     "baseline_commit": "33195c79338b0597b462800109b81d6fbe75c932",
-    "stage": "P3_CANDIDATE_NV_TRANSPORT_ACTION",
+    "stage": "P4_CANDIDATE_NEUTRAL_TRANSPORT_PDE_BC",
     "candidate_blobs": {
-      "assets/input.i": "c029685fa8e6b6d07f35647fb4f0db83bb05e1d1",
+      "assets/input.i": "f3556f3f2bdab3a2aff5a06089eca34eedb3e4ca",
       "assets/maxwell.i": "c317fbbb7a55eee52a22e65db7e6349c54f0cebd",
       "assets/chemistry.json": "9cfdfa2286dae1c4d1a6cb5bd85fb8b086b1f010",
       "assets/neutral_transport_aliases.txt": "98075edf56cbe7d3b5e96c531efe74277ffc0a37"
     },
-    "retained": "Native neutral PDE/BC, EI/elastic and RF coil source; temporary original collision table for historical A/B",
+    "retained": "Native neutral variables, Rhie-Chow, viscosity and geometry area, chemical reaction source kernels, EI/elastic and RF coil sources; historical A/B table retained.",
     "science": "SCIENCE_HOLD",
     "source_delta": [
       {
@@ -1512,6 +1512,18 @@
         "import_blob": "063ed007aa70f6d3e63b9124071b37fd306129ab",
         "candidate_blob": "dfd2c21a8809e674387879fec7f15d230c05405a",
         "reason": "Reuse solved neutral catalogue for NVTransport; publish live concentrations."
+      },
+      {
+        "path": "app/src/physics/plasma/NVTransport.C",
+        "prior_blob": "dfd2c21a8809e674387879fec7f15d230c05405a",
+        "candidate_blob": "6086ee0cfebb2d3b6ab0109f6d1ff51287e13421",
+        "reason": "Opt-in RZ neutral conservation and conservative WCNS BC generation with existing numerical operators."
+      },
+      {
+        "path": "app/include/physics/plasma/NVTransport.h",
+        "prior_blob": "445b85975ddb31e6acf2f02d2bd2cbcfbd7619e0",
+        "candidate_blob": "fbc0b19a904b1c709bdf3e9c833f24142763a852",
+        "reason": "Opt-in RZ neutral conservation and conservative WCNS BC generation with existing numerical operators."
       }
     ],
     "alias_projection": {

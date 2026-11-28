@@ -92,10 +92,32 @@ set -e
 test "$rc" -ne 0 && test "$rc" -ne 124
 grep -q "External molar masses require alias-only species rows" "$ev/nv-negative.log"
 echo NV_TRANSPORT_NEGATIVE_PASS
+# Negative control: overlapping neutral inlet/wall ownership is invalid.
+badflow="$RUNNER_TEMP/flat-flow-negative"
+mkdir "$badflow"; cp -a assets "$badflow/assets"
+sed -i "s/neutral_wall_boundaries = '.*/neutral_wall_boundaries = 'inlet'/" "$badflow/assets/input.i"
+set +e
+timeout 480 docker run --rm "${opts[@]}" -v "$badflow:/case" "$BASE_IMAGE" -lc '
+  source /environment
+  export LD_LIBRARY_PATH=/workspace/app/test/lib:/workspace/app/lib:${LD_LIBRARY_PATH:-}
+  exec /workspace/app/physics-opt "$@"
+' physics-opt --check-input -i assets/input.i >"$ev/flow-negative.log" 2>&1
+rc=$?
+set -e
+test "$rc" -ne 0 && test "$rc" -ne 124
+grep -q "Neutral inlet, walls and outlet must not overlap" "$ev/flow-negative.log"
+echo NEUTRAL_FLOW_BOUNDARY_NEGATIVE_PASS
 test "$(sha256sum app/physics-opt | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$ev/executable.sha256")"
 if test "${#kinds[@]}" -eq 2; then
   docker run --rm --network none --entrypoint /bin/bash --user 0:0 -v "$ev:/evidence" -v "$root/tests/mesh:/scripts:ro" "$BASE_IMAGE" -lc 'source /environment; python3 /scripts/compare-unified.py /evidence'
 fi
+# Report all neutral diagnostics and fields, not just charged/RF fields.
+python3 - "$ev" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1])/"mesh-physics-comparison.json"
+j=json.loads(p.read_text())
+print(json.dumps({"status":"NEUTRAL_FLOW_COMPARISON_MEASURED","scalars":{k:v for k,v in j["scalars"].items() if k.startswith(("neutral_","w_O"))},"fields":{k:v for k,v in j["fields"].items() if k in ("pressure","u","v","w_O2s","w_O","w_Os")}},sort_keys=True))
+PY
 # Only publish after the native and field gates pass.
 mkdir -p "$RUNNER_TEMP/physics-exodus"
 docker run --rm --network none --entrypoint /bin/bash --user 0:0 \

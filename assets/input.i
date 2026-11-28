@@ -858,134 +858,10 @@
 []
 
 [FVKernels]
-  [neutral_mass_time]
-    type = WCNSFVMassTimeDerivative
-    variable = pressure
-    drho_dt = drho_neutral_dt
-    block = plasma
-  []
-  [neutral_mass_advection]
-    type = INSFVMassAdvection
-    variable = pressure
-    rho = rho_neutral
-    block = plasma
-  []
 
-  [u_advection]
-    type = INSFVMomentumAdvection
-    variable = u
-    rho = rho_neutral
-    momentum_component = x
-    block = plasma
-  []
-  [u_diffusion]
-    type = INSFVMomentumDiffusion
-    variable = u
-    mu = mu_flow
-    momentum_component = x
-    block = plasma
-  []
-  [u_pressure]
-    type = INSFVMomentumPressure
-    variable = u
-    pressure = pressure
-    momentum_component = x
-    block = plasma
-  []
-  [v_advection]
-    type = INSFVMomentumAdvection
-    variable = v
-    rho = rho_neutral
-    momentum_component = y
-    block = plasma
-  []
-  [v_diffusion]
-    type = INSFVMomentumDiffusion
-    variable = v
-    mu = mu_flow
-    momentum_component = y
-    block = plasma
-  []
-  [v_pressure]
-    type = INSFVMomentumPressure
-    variable = v
-    pressure = pressure
-    momentum_component = y
-    block = plasma
-  []
-  [u_rz_viscous_source]
-    type = INSFVMomentumViscousSourceRZ
-    variable = u
-    mu = mu_flow
-    momentum_component = x
-    block = plasma
-  []
 
-  [O2s_time]
-    type = PhysicsFVConservativeMassFractionTimeDerivative
-    variable = w_O2s
-    rho = rho_neutral
-    block = plasma
-  []
-  [O2s_advection]
-    type = PhysicsFVMassFractionAdvection
-    variable = w_O2s
-    rho = rho_neutral
-    block = plasma
-  []
-  [O2s_diffusion]
-    type = PhysicsFVMixtureAveragedDiffusion
-    variable = w_O2s
-    rho = rho_neutral
-    diffusivity = D_mix_O2s
-    mean_molar_mass = Mn_neutral
-    include_molar_mass_gradient = true
-    block = plasma
-  []
 
-  [O_time]
-    type = PhysicsFVConservativeMassFractionTimeDerivative
-    variable = w_O
-    rho = rho_neutral
-    block = plasma
-  []
-  [O_advection]
-    type = PhysicsFVMassFractionAdvection
-    variable = w_O
-    rho = rho_neutral
-    block = plasma
-  []
-  [O_diffusion]
-    type = PhysicsFVMixtureAveragedDiffusion
-    variable = w_O
-    rho = rho_neutral
-    diffusivity = D_mix_O
-    mean_molar_mass = Mn_neutral
-    include_molar_mass_gradient = true
-    block = plasma
-  []
 
-  [Os_time]
-    type = PhysicsFVConservativeMassFractionTimeDerivative
-    variable = w_Os
-    rho = rho_neutral
-    block = plasma
-  []
-  [Os_advection]
-    type = PhysicsFVMassFractionAdvection
-    variable = w_Os
-    rho = rho_neutral
-    block = plasma
-  []
-  [Os_diffusion]
-    type = PhysicsFVMixtureAveragedDiffusion
-    variable = w_Os
-    rho = rho_neutral
-    diffusivity = D_mix_Os
-    mean_molar_mass = Mn_neutral
-    include_molar_mass_gradient = true
-    block = plasma
-  []
   [ei415_neutral_mass_source]
     type = FVCoupledForce
     variable = pressure
@@ -1055,99 +931,6 @@
 [BCs]
 []
 
-[FVBCs]
-  [neutral_inlet_mass]
-    type = WCNSFVMassFluxBC
-    variable = pressure
-    boundary = inlet
-    mdot_pp = neutral_inlet_mdot
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    direction = '-1 0 0'
-  []
-  [neutral_inlet_u]
-    type = WCNSFVMomentumFluxBC
-    variable = u
-    boundary = inlet
-    mdot_pp = neutral_inlet_mdot
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    momentum_component = x
-    direction = '-1 0 0'
-  []
-  [neutral_inlet_v]
-    type = WCNSFVMomentumFluxBC
-    variable = v
-    boundary = inlet
-    mdot_pp = neutral_inlet_mdot
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    momentum_component = y
-    direction = '-1 0 0'
-  []
-
-  [neutral_inlet_O2s]
-    type = WCNSFVScalarFluxBC
-    variable = w_O2s
-    boundary = inlet
-    passive_scalar = w_O2s
-    scalar_flux_pp = neutral_inlet_mdot_O2s
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    direction = '-1 0 0'
-  []
-  [neutral_inlet_O]
-    type = WCNSFVScalarFluxBC
-    variable = w_O
-    boundary = inlet
-    passive_scalar = w_O
-    scalar_flux_pp = neutral_inlet_mdot_O
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    direction = '-1 0 0'
-  []
-  [neutral_inlet_Os]
-    type = WCNSFVScalarFluxBC
-    variable = w_Os
-    boundary = inlet
-    passive_scalar = w_Os
-    scalar_flux_pp = neutral_inlet_mdot_Os
-    area_pp = neutral_inlet_area
-    rho = rho_neutral
-    vel_x = u
-    vel_y = v
-    direction = '-1 0 0'
-  []
-
-  [neutral_wall_u]
-    type = INSFVNoSlipWallBC
-    variable = u
-    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring'
-    function = 0
-  []
-  [neutral_wall_v]
-    type = INSFVNoSlipWallBC
-    variable = v
-    boundary = 'plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring'
-    function = 0
-  []
-  [neutral_outlet_p]
-    type = INSFVOutletPressureBC
-    variable = pressure
-    boundary = outlet
-    function = ${Physics/Plasmas/pressure}
-  []
-[]
 
 [Postprocessors]
   [ne_min]
@@ -2276,6 +2059,13 @@ faraday_t6 = 96485.33212331001
       [NavierStokes]
         block = plasma
         neutral_collision_file = 'neutral_transport_aliases.txt'
+        solve_neutral_transport = true
+        neutral_wall_boundaries = 'plasma_electrode plasma_metal plasma_right plasma_cover plasma_wafer plasma_focus_ring'
+        neutral_outlet_boundaries = outlet
+        neutral_inlet_direction = '-1 0 0'
+        neutral_outlet_pressure = ${Physics/Plasmas/pressure}
+        neutral_viscosity = mu_flow
+        neutral_rhie_chow = rc
       []
       [Chemistry]
         block = plasma
